@@ -5,7 +5,9 @@
 import datetime
 import sqlite3
 import os 
+import shutil
 import urllib
+import argparse
 
 # Manual installation requried for these
 import cherrypy 
@@ -28,6 +30,7 @@ from globalshock import *
 
 scriptdir = os.path.abspath(os.curdir)
 sqlitedbpath = os.path.join(scriptdir, 'db.shocktopodes.sqlite')
+sessionpath = os.path.join(scriptdir,'sessions.cherrypy')
 SESSION_KEY='_shocktopodes_session'
 
 class SAEnginePlugin(plugins.SimplePlugin):
@@ -166,25 +169,6 @@ class ShockRoot:
     def index(self):
         return self.generate_uploadform()
 
-    @cherrypy.expose
-    def initbullshit(self):
-        # TODO: yeah obviously this shouldn't be here
-        # I just haven't figured out how to do this with sessions properly yet
-        cherrypy.request.db.add(Key('yellowrock'))
-
-        f = open(os.path.join(scriptdir, 'static', 'frogsmile.jpg'), 'br')
-        eximage = ShockFile('frogsmile.jpg', f.read(), 'image/jpeg')
-        f.close()
-
-        f = open(os.path.join(scriptdir, 'static', 'predclick.m4a'), 'br')
-        exaudio = ShockFile('predclick.m4a', f.read(), 'audio/mp4')
-        f.close()
-
-        cherrypy.request.db.add(eximage)
-        cherrypy.request.db.add(exaudio)
-
-        raise cherrypy.HTTPRedirect('/')
-
     def valid_key(self, key, session):
         # TODO: honestly is this the best way to search for a key, come on dude
         if session.query(Key).filter(Key.key.in_([key,])).all():
@@ -267,6 +251,7 @@ class ShockRoot:
         cherrypy.request.db.add(newfile)
         debugprint('Upload complete! {}'.format(newfile))
 
+        # TODO: this stuff doesn't seem to actually happen? hmm. 
         return out % (newfile.length, myFile.filename, myFile.content_type)
 
     @protect()
@@ -355,8 +340,43 @@ class ShockRoot:
         return html
         
         
+def reinit():
+
+    shutil.rmtree(sessionpath)
+    os.makedirs(sessionpath, mode=0o700, exist_ok=True)
+
+    os.remove(sqlitedbpath)
+
+    engine = create_engine('sqlite:///%s' % sqlitedbpath, echo=True)
+    Base.metadata.create_all(engine)
+
+    S = sessionmaker(bind=engine)
+    sess = S()
+    sess.add(Key('yellowrock'))
+
+    f = open(os.path.join(scriptdir, 'static', 'frogsmile.jpg'), 'br')
+    eximage = ShockFile('frogsmile.jpg', f.read(), 'image/jpeg')
+    f.close()
+
+    f = open(os.path.join(scriptdir, 'static', 'predclick.m4a'), 'br')
+    exaudio = ShockFile('predclick.m4a', f.read(), 'audio/mp4')
+    f.close()
+
+    sess.add(eximage)
+    sess.add(exaudio)
+
+    sess.commit()
 
 if __name__=='__main__':
+
+    d = "Run the shocktopodes service."
+    argparser = argparse.ArgumentParser(description=d)
+    argparser.add_argument("--init", "-i", action='store_true',
+                           help="Reinitialize everything. WARNING: DESTROYS ANY EXISTING DATA.")
+
+    args_namespace = argparser.parse_args()
+    if args_namespace.init:
+        reinit()
 
     SAEnginePlugin(cherrypy.engine).subscribe()
     cherrypy.tools.db = SATool()
@@ -366,13 +386,18 @@ if __name__=='__main__':
     cherrypy.config.update({'server.socket_port' : 7979,
                             'server.socket_host' : '0.0.0.0',
                             # TODO: this is for debugging databases with. fix for deployment!
-                            'server.thread_pool' : 1}) 
+                            #'server.thread_pool' : 1
+                            }) 
     config_root = {
         '/' : {
             'tools.db.on': True, 
             'tools.shockauth.on': True,
             'tools.sessions.on': True,
             'tools.sessions.name': 'shocktopodes',
+            'tools.sessions.storage_type': 'file',
+            'tools.sessions.storage_path': sessionpath, 
+            'tools.sessions.timeout': 525600, # ~1 year in minutes
+            
             'tools.staticdir.root': scriptdir, 
             },
         '/static' : {
