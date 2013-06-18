@@ -167,7 +167,10 @@ class ShockRoot:
     @cherrypy.expose
     @protect()
     def index(self):
-        return self.generate_uploadform()
+        hf = open(os.path.join(scriptdir, 'index.py-html'))
+        html = hf.read()
+        hf.close()
+        return html
 
     def valid_key(self, key, session):
         # TODO: honestly is this the best way to search for a key, come on dude
@@ -178,7 +181,9 @@ class ShockRoot:
 
     def generate_uploadform(self):
         return """
-        <html><body>
+        <html><head>
+            <link rel="stylesheet" href="static/dropzone/css/basic.css" />
+        </head><body>
             <h2>Upload a file</h2>
             <script src="./static/dropzone/dropzone.js"></script>
             <script>
