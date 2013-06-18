@@ -4,6 +4,7 @@
 # Python base modules
 import datetime
 import sqlite3
+import os 
 
 # Manual installation requried for these
 import cherrypy 
@@ -24,7 +25,8 @@ Base = declarative_base()
 from globalshock import *
 from auth import SESSION_KEY, protect, protect_handler, logout
 
-sqlitedbpath = '/var/www/shocktopodes/shocktopodes.sqlite'
+scriptdir = os.path.abspath(os.curdir)
+sqlitedbpath = os.path.join(scriptdir, 'shocktopodes.sqlite')
 
 class SAEnginePlugin(plugins.SimplePlugin):
     def __init__(self, bus):
@@ -201,7 +203,7 @@ if __name__=='__main__':
             'tools.shockauth.on': True,
             'tools.sessions.on': True,
             'tools.sessions.name': 'shocktopodes',
-            'tools.staticdir.root': '/var/www/shocktopodes',
+            'tools.staticdir.root': scriptdir, 
             },
         '/static' : {
             'tools.staticdir.on': True,
