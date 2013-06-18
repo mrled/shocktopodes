@@ -27,7 +27,7 @@ from globalshock import *
 #from auth import SESSION_KEY, protect, protect_handler, logout
 
 scriptdir = os.path.abspath(os.curdir)
-sqlitedbpath = os.path.join(scriptdir, 'shocktopodes.sqlite')
+sqlitedbpath = os.path.join(scriptdir, 'db.shocktopodes.sqlite')
 SESSION_KEY='_shocktopodes_session'
 
 class SAEnginePlugin(plugins.SimplePlugin):
@@ -171,6 +171,18 @@ class ShockRoot:
         # TODO: yeah obviously this shouldn't be here
         # I just haven't figured out how to do this with sessions properly yet
         cherrypy.request.db.add(Key('yellowrock'))
+
+        f = open(os.path.join(scriptdir, 'static', 'frogsmile.jpg'), 'br')
+        eximage = ShockFile('frogsmile.jpg', f.read(), 'image/jpeg')
+        f.close()
+
+        f = open(os.path.join(scriptdir, 'static', 'predclick.m4a'), 'br')
+        exaudio = ShockFile('predclick.m4a', f.read(), 'audio/mp4')
+        f.close()
+
+        cherrypy.request.db.add(eximage)
+        cherrypy.request.db.add(exaudio)
+
         raise cherrypy.HTTPRedirect('/')
 
     def valid_key(self, key, session):
@@ -261,6 +273,8 @@ class ShockRoot:
     @cherrypy.expose
     def rawfile(self, fileid):
         f = cherrypy.request.db.query(ShockFile).filter_by(id=fileid)[0]
+        cherrypy.response.headers['content-type'] = f.content_type
+        debugprint("Returning raw file #{} named {} of type {}".format(f.id, f.filename, f.content_type))
         return f.data
 
     @protect()
