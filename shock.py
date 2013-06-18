@@ -18,7 +18,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import scoped_session, sessionmaker
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import Column
-from sqlalchemy.types import String, Integer
+from sqlalchemy.types import String, Integer, LargeBinary, DateTime
 Base = declarative_base()
 
 # Project files
@@ -102,12 +102,35 @@ class Key(Base):
     __tablename__='keys'
     id = Column(Integer, primary_key=True)
     key = Column(String)
+    atime = Column(DateTime)
 
     def __init__(self, key):
         Base.__init__(self)
         self.key = key
+        self.atime = datetime.datetime.utcnow()
     def __repr__(self):
-        return "<Key({})>".format(self.key)
+        return "<Key({} created {})>".format(self.key, 
+                                             self.atime.strftime(iso8601))
+
+class ShockFile(Base):
+    __tablename__='files'
+    id = Column(Integer, primary_key=True)
+    filename = Column(String)
+    original_filename = Column(String)
+    data = Column(LargeBinary)
+    atime = Column(DateTime)
+    content_type = Column(String) # TODO
+    length = Column(Integer)
+    def __init__(self, filename, data, content_type):
+        self.filename = self.original_filename = filename
+        self.data = data
+        self.atime = datetime.datetime.utcnow()
+        self.length = len(data)
+        self.content_type = content_type
+    def __repr__(self):
+        return "<ShockFile({}, a {} of size {})>".format(self.filename, 
+                                                         self.content_type,
+                                                         self.length)
 
 class ShockRoot:
     @cherrypy.expose
@@ -116,11 +139,14 @@ class ShockRoot:
         return self.generate_uploadform()
 
     @cherrypy.expose
-    def bullshit(self):
+    def initbullshit(self):
+        # TODO: yeah obviously this shouldn't be here
+        # I just haven't figured out how to do this with sessions properly yet
         cherrypy.request.db.add(Key('yellowrock'))
         raise cherrypy.HTTPRedirect('/')
 
     def valid_key(self, key, session):
+        # TODO: honestly is this the best way to search for a key, come on dude
         if session.query(Key).filter(Key.key.in_([key,])).all():
             return True
         else:
@@ -168,23 +194,24 @@ class ShockRoot:
         </body>
         </html>"""
 
-        tmppath = '/tmp/tmpshock'
-        tmpfile = open(tmppath, 'bw')
-        tmpfile.write(myFile.file.read())
-        tmpfile.close()
+        #re_images = re.compile('\.(jpg|jpeg|png|tif|tiff|raw|gif|bmp|svg)$')
+        #re_audio = re.compile('\.(mp3|m4a)$')
 
-        # Although this just counts the file length, it demonstrates
-        # how to read large files in chunks instead of all at once.
-        # CherryPy reads the uploaded file into a temporary file;
-        # myFile.file.read reads from that.
-        size = 0
-        while True:
-            data = myFile.file.read(8192)
-            if not data:
-                break
-            size += len(data)
+        #if re_images.match(myFile.filename.lower()):
 
-        return out % (size, myFile.filename, myFile.content_type)
+        #if myFile.filename.lower().endswith('.jpg')
+
+        newfile = ShockFile(myFile.filename, myFile.file.read(), myFile.content_type)
+        cherrypy.request.db.add(newfile)
+        debugprint('Upload complete! {}'.format(newfile))
+
+        return out % (newfile.length, myFile.filename, myFile.content_type)
+
+    #@protect()
+    #@cherrypy.expose
+    #def file(self, fileid):
+        
+        
 
 if __name__=='__main__':
 
