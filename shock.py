@@ -20,14 +20,11 @@ from sqlalchemy import Column
 from sqlalchemy.types import String, Integer
 Base = declarative_base()
 
+# Project files
+from globalshock import *
+from auth import SESSION_KEY, protect, protect_handler, logout
 
 sqlitedbpath = '/var/www/shocktopodes/shocktopodes.sqlite'
-SESSION_KEY='_shock_key'
-
-SHOCK_DEBUG=True
-def debugprint(text):
-    if SHOCK_DEBUG:
-        print(text)
 
 class SAEnginePlugin(plugins.SimplePlugin):
     def __init__(self, bus):
@@ -112,51 +109,14 @@ class Key(Base):
 
 class ShockRoot:
     @cherrypy.expose
-    def index(self, key=None):
-        # First, check to see if there is a key passed via URL. If there is & 
-        # it's valid, make a session out of it and continue to the protected
-        # page. 
-        # If there isn't, see if there was already a valid session from a 
-        # previous login. If so, use it. 
-        # If neither is true, return the login page. 
-
-        authenticated=False
-        if key:
-            if self.valid_key(key, cherrypy.request.db):
-                cherrypy.session.regenerate()
-                cherrypy.session[SESSION_KEY] = key
-                authenticated=True
-        else:
-            try:
-                # now try to see if there was a valid session from before
-                this_session = cherrypy.session[SESSION_KEY]
-                cherrypy.session.regenerate()
-                authenticated=True
-            except KeyError:
-                pass
-
-        if authenticated:
-            return """
-            <html><body>
-                <h2>Upload a file</h2>
-                <script src="./static/dropzone/dropzone.js"></script>
-                <script>
-                Dropzone.options.shockzone = {
-                    paramName: "myFile",
-                };
-                </script>
-                <form action="/shockup"
-                      class="dropzone"
-                      id="shockzone"></form>
-            </body></html>
-            """
-        else:
-            return self.generate_loginform()
+    @protect()
+    def index(self):
+        return self.generate_uploadform()
 
     @cherrypy.expose
     def bullshit(self):
         cherrypy.request.db.add(Key('yellowrock'))
-        return "lol ok" 
+        raise cherrypy.HTTPRedirect('/')
 
     def valid_key(self, key, session):
         if session.query(Key).filter(Key.key.in_([key,])).all():
@@ -164,13 +124,38 @@ class ShockRoot:
         else:
             return False
 
+    def generate_uploadform(self):
+        return """
+        <html><body>
+            <h2>Upload a file</h2>
+            <script src="./static/dropzone/dropzone.js"></script>
+            <script>
+            Dropzone.options.shockzone = {
+                paramName: "myFile",
+            };
+            </script>
+            <form action="/shockup"
+                  class="dropzone"
+                  id="shockzone"></form>
+        </body></html>
+        """
+
     def generate_loginform(self):
         return """<html><body><h2>Enter secret key</h2>
-            <form method="post" action="/">
+            <form method="post" action="/login">
             Secret key: <input type="text" name="key" />
             <input type="submit" value="Submit" />
             </body></html>"""
 
+    @cherrypy.expose
+    def login(self, key=None):
+        if self.valid_key(key, cherrypy.request.db):
+            cherrypy.session[SESSION_KEY] = key
+            raise cherrypy.HTTPRedirect('/')
+        else:
+            return self.generate_loginform()
+
+    @protect()
     @cherrypy.expose
     def shockup(self, myFile):
         out = """<html>
@@ -199,11 +184,12 @@ class ShockRoot:
 
         return out % (size, myFile.filename, myFile.content_type)
 
-
 if __name__=='__main__':
 
     SAEnginePlugin(cherrypy.engine).subscribe()
     cherrypy.tools.db = SATool()
+
+    cherrypy.tools.shockauth = cherrypy.Tool('before_handler', protect_handler)
 
     cherrypy.config.update({'server.socket_port' : 7979,
                             'server.socket_host' : '0.0.0.0',
@@ -212,6 +198,7 @@ if __name__=='__main__':
     config_root = {
         '/' : {
             'tools.db.on': True, 
+            'tools.shockauth.on': True,
             'tools.sessions.on': True,
             'tools.sessions.name': 'shocktopodes',
             'tools.staticdir.root': '/var/www/shocktopodes',
@@ -229,5 +216,3 @@ if __name__=='__main__':
     cherrypy.engine.block()
 
     
-
-
