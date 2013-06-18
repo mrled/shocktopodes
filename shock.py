@@ -268,10 +268,75 @@ class ShockRoot:
     def file(self, fileid):
         f = cherrypy.request.db.query(ShockFile).filter_by(id=fileid)[0]
         debugprint(f.__repr__())
-        html = '<html><body><h2>File ID: {}; Name: {}</h2>'.format(f.id, f.filename)
+        html = '<html><head><title>{}</title>'.format(f.filename)
+        html+= '<script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.6/jquery.min.js"></script>'
+        html+= '<link type="text/css" href="/static/jplayer-skin/jplayer.blue.monday.css" rel="stylesheet" />'
+        html+= '<script type="text/javascript" src="/static/jplayer/jquery.jplayer.min.js"></script>'
+        html+= '''
+            <script type="text/javascript">
+              $(document).ready(function(){
+                $("#jquery_jplayer_1").jPlayer({
+                  ready: function () {
+                    $(this).jPlayer("setMedia", {
+            '''
+        html+= '''
+                      m4a: "http://localhost:7979/rawfile?fileid=%s",
+                    });
+                  },
+                  swfPath: "/static/jplayer",
+                  supplied: "m4a"
+                });
+              });
+            </script>
+            ''' %fileid
+        html+= '<body><h2>File ID: {}; Name: {}</h2>'.format(f.id, f.filename)
         html+= '<p>Type: {}; Length: {}</p>'.format(f.content_type, f.length)
         if f.content_type.startswith('image'):
             html += '<p><img src=/rawfile?fileid={} /></p>'.format(fileid)
+        if f.content_type.startswith('audio'):
+            html += '''
+                <div id="jquery_jplayer_1" class="jp-jplayer"></div>
+                <div id="jp_container_1" class="jp-audio">
+                  <div class="jp-type-single">
+                    <div class="jp-gui jp-interface">
+                      <ul class="jp-controls">
+                        <li><a href="javascript:;" class="jp-play" tabindex="1">play</a></li>
+                        <li><a href="javascript:;" class="jp-pause" tabindex="1">pause</a></li>
+                        <li><a href="javascript:;" class="jp-stop" tabindex="1">stop</a></li>
+                        <li><a href="javascript:;" class="jp-mute" tabindex="1" title="mute">mute</a></li>
+                        <li><a href="javascript:;" class="jp-unmute" tabindex="1" title="unmute">unmute</a></li>
+                        <li><a href="javascript:;" class="jp-volume-max" tabindex="1" title="max volume">max volume</a></li>
+                      </ul>
+                      <div class="jp-progress">
+                        <div class="jp-seek-bar">
+                          <div class="jp-play-bar"></div>
+                        </div>
+                      </div>
+                      <div class="jp-volume-bar">
+                        <div class="jp-volume-bar-value"></div>
+                      </div>
+                      <div class="jp-time-holder">
+                        <div class="jp-current-time"></div>
+                        <div class="jp-duration"></div>
+                        <ul class="jp-toggles">
+                          <li><a href="javascript:;" class="jp-repeat" tabindex="1" title="repeat">repeat</a></li>
+                          <li><a href="javascript:;" class="jp-repeat-off" tabindex="1" title="repeat off">repeat off</a></li>
+                        </ul>
+                      </div>
+                    </div>
+                    <div class="jp-title">
+                      <ul>
+                        <li>Bubble</li>
+                      </ul>
+                    </div>
+                    <div class="jp-no-solution">
+                      <span>Update Required</span>
+                      To play the media you will need to either update your browser to a recent version or update your <a href="http://get.adobe.com/flashplayer/" target="_blank">Flash plugin</a>.
+                    </div>
+                  </div>
+                </div>
+              '''
+
         html+= '</body></html>'
         return html
         
