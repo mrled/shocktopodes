@@ -5,6 +5,7 @@
 import datetime
 import sqlite3
 import os 
+import urllib
 
 # Manual installation requried for these
 import cherrypy 
@@ -23,10 +24,11 @@ Base = declarative_base()
 
 # Project files
 from globalshock import *
-from auth import SESSION_KEY, protect, protect_handler, logout
+#from auth import SESSION_KEY, protect, protect_handler, logout
 
 scriptdir = os.path.abspath(os.curdir)
 sqlitedbpath = os.path.join(scriptdir, 'shocktopodes.sqlite')
+SESSION_KEY='_shocktopodes_session'
 
 class SAEnginePlugin(plugins.SimplePlugin):
     def __init__(self, bus):
@@ -132,6 +134,32 @@ class ShockFile(Base):
                                                          self.content_type,
                                                          self.length)
 
+def protect_handler(*args, **kwargs):
+    conditions = cherrypy.request.config.get('auth.require', None)
+    if conditions is not None:
+        debugprint("Accessing protected URL...")        
+        # this is the page the user requested. if they have to log in first, 
+        # they'll be redirected there after they do so
+        requested_page = urllib.parse.quote(cherrypy.request.request_line.split()[1])
+        try:
+            # now try to see if there was a valid session from before
+            this_session = cherrypy.session[SESSION_KEY]
+            cherrypy.session.regenerate()
+        except KeyError:
+            debugprint("Redirecting to login page...")
+            raise cherrypy.HTTPRedirect("/login?from_page={}".format(requested_page))
+            #raise cherrypy.HTTPRedirect("/login".format(requested_page))
+
+def protect(*conditions):
+    def decorate(f):
+        if not hasattr(f, '_cp_config'):
+            f._cp_config = dict()
+        if 'auth.require' not in f._cp_config:
+            f._cp_config['auth.require'] = []
+        f._cp_config['auth.require'].extend(conditions)
+        return f
+    return decorate
+
 class ShockRoot:
     @cherrypy.expose
     @protect()
@@ -168,6 +196,12 @@ class ShockRoot:
         </body></html>
         """
 
+    #def generate_loginform(self, from_page='/'):
+        # return """<html><body><h2>Enter secret key</h2>
+        #     <form method="post" action="/login/from_page={}">
+        #     Secret key: <input type="text" name="key" />
+        #     <input type="submit" value="Submit" />
+        #     </body></html>""".format(from_page)
     def generate_loginform(self):
         return """<html><body><h2>Enter secret key</h2>
             <form method="post" action="/login">
@@ -176,12 +210,28 @@ class ShockRoot:
             </body></html>"""
 
     @cherrypy.expose
-    def login(self, key=None):
+    def login(self, key=None, from_page='/'):
+        debugprint("From page: {}".format(from_page))
+        if from_page.startswith("/login"):
+            from_page="/"
         if self.valid_key(key, cherrypy.request.db):
             cherrypy.session[SESSION_KEY] = key
-            raise cherrypy.HTTPRedirect('/')
+            raise cherrypy.HTTPRedirect(from_page)
         else:
-            return self.generate_loginform()
+            #return self.generate_loginform(from_page=from_page)
+            return """<html><body><h2>Enter secret key</h2>
+                <form method="post" action="/login?from_page={}">
+                Secret key: <input type="text" name="key" />
+                <input type="submit" value="Submit" />
+                </body></html>""".format(from_page)
+
+
+    @protect()
+    @cherrypy.expose
+    def logout():
+        this_session = cherrypy.session.get(SESSION_KEY, None)
+        cherrypy.session[SESSION_KEY] = None
+        return "Logout successful"
 
     @protect()
     @cherrypy.expose
@@ -201,15 +251,29 @@ class ShockRoot:
 
         #if myFile.filename.lower().endswith('.jpg')
 
-        newfile = ShockFile(myFile.filename, myFile.file.read(), myFile.content_type)
+        newfile = ShockFile(myFile.filename, myFile.file.read(), myFile.content_type.value)
         cherrypy.request.db.add(newfile)
         debugprint('Upload complete! {}'.format(newfile))
 
         return out % (newfile.length, myFile.filename, myFile.content_type)
 
-    #@protect()
-    #@cherrypy.expose
-    #def file(self, fileid):
+    @protect()
+    @cherrypy.expose
+    def rawfile(self, fileid):
+        f = cherrypy.request.db.query(ShockFile).filter_by(id=fileid)[0]
+        return f.data
+
+    @protect()
+    @cherrypy.expose 
+    def file(self, fileid):
+        f = cherrypy.request.db.query(ShockFile).filter_by(id=fileid)[0]
+        debugprint(f.__repr__())
+        html = '<html><body><h2>File ID: {}; Name: {}</h2>'.format(f.id, f.filename)
+        html+= '<p>Type: {}; Length: {}</p>'.format(f.content_type, f.length)
+        if f.content_type.startswith('image'):
+            html += '<p><img src=/rawfile?fileid={} /></p>'.format(fileid)
+        html+= '</body></html>'
+        return html
         
         
 
