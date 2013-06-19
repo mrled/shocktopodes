@@ -13,25 +13,27 @@ import argparse
 import cherrypy 
 from cherrypy.process import wspbus, plugins
 
-#import psycopg2
-#import psycopg2.extras
-
 import sqlalchemy
 from sqlalchemy import create_engine
 from sqlalchemy.orm import scoped_session, sessionmaker
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import Column
 from sqlalchemy.types import String, Integer, LargeBinary, DateTime
-Base = declarative_base()
+
+from mako.template import Template
+from mako.runtime import Context
+from mako.lookup import TemplateLookup
 
 # Project files
 from globalshock import *
-#from auth import SESSION_KEY, protect, protect_handler, logout
 
+Base = declarative_base()
 scriptdir = os.path.abspath(os.curdir)
 sqlitedbpath = os.path.join(scriptdir, 'db.shocktopodes.sqlite')
 sessionpath = os.path.join(scriptdir,'sessions.cherrypy')
 SESSION_KEY='_shocktopodes_session'
+templepath = os.path.join(scriptdir, 'temple')
+#temple = TemplateLookup(directories=[templepath])
 
 class SAEnginePlugin(plugins.SimplePlugin):
     def __init__(self, bus):
@@ -103,6 +105,40 @@ class SATool(cherrypy.Tool):
         finally:
             self.session.remove()
 
+class MakoHandler(cherrypy.dispatch.LateParamPageHandler):
+    """Callable which sets response.body."""
+    def __init__(self, template, next_handler):
+        self.template = template
+        self.next_handler = next_handler
+    def __call__(self):
+        env = globals().copy()
+        env.update(self.next_handler())
+        return self.template.render(**env)
+
+
+class MakoLoader(object):
+    def __init__(self):
+        self.lookups = {}
+    def __call__(self, filename, directories, module_directory=None,
+                 collection_size=-1):
+        # Find the appropriate template lookup.
+        key = (tuple(directories), module_directory)
+        try:
+            lookup = self.lookups[key]
+        except KeyError:
+            lookup = TemplateLookup(directories=directories,
+                                    module_directory=module_directory,
+                                    collection_size=collection_size)
+            self.lookups[key] = lookup
+        cherrypy.request.lookup = lookup
+        
+        # Replace the current handler.
+        cherrypy.request.template = t = lookup.get_template(filename)
+        cherrypy.request.handler = MakoHandler(t, cherrypy.request.handler)
+
+mloader = MakoLoader()
+cherrypy.tools.mako = cherrypy.Tool('on_start_resource', mloader)
+
 class Key(Base):
     __tablename__='keys'
     id = Column(Integer, primary_key=True)
@@ -151,7 +187,6 @@ def protect_handler(*args, **kwargs):
         except KeyError:
             debugprint("Redirecting to login page...")
             raise cherrypy.HTTPRedirect("/login?from_page={}".format(requested_page))
-            #raise cherrypy.HTTPRedirect("/login".format(requested_page))
 
 def protect(*conditions):
     def decorate(f):
@@ -165,12 +200,10 @@ def protect(*conditions):
 
 class ShockRoot:
     @cherrypy.expose
+    @cherrypy.tools.mako(filename='index.mako')
     @protect()
     def index(self):
-        hf = open(os.path.join(scriptdir, 'index.py-html'))
-        html = hf.read()
-        hf.close()
-        return html
+        return ''
 
     def valid_key(self, key, session):
         # TODO: honestly is this the best way to search for a key, come on dude
@@ -179,85 +212,37 @@ class ShockRoot:
         else:
             return False
 
-    def generate_uploadform(self):
-        return """
-        <html><head>
-            <link rel="stylesheet" href="static/dropzone/css/basic.css" />
-        </head><body>
-            <h2>Upload a file</h2>
-            <script src="./static/dropzone/dropzone.js"></script>
-            <script>
-            Dropzone.options.shockzone = {
-                paramName: "myFile",
-            };
-            </script>
-            <form action="/shockup"
-                  class="dropzone"
-                  id="shockzone"></form>
-        </body></html>
-        """
-
-    #def generate_loginform(self, from_page='/'):
-        # return """<html><body><h2>Enter secret key</h2>
-        #     <form method="post" action="/login/from_page={}">
-        #     Secret key: <input type="text" name="key" />
-        #     <input type="submit" value="Submit" />
-        #     </body></html>""".format(from_page)
-    def generate_loginform(self):
-        return """<html><body><h2>Enter secret key</h2>
-            <form method="post" action="/login">
-            Secret key: <input type="text" name="key" />
-            <input type="submit" value="Submit" />
-            </body></html>"""
-
+    @cherrypy.tools.mako(filename='file.mako')
     @cherrypy.expose
     def login(self, key=None, from_page='/'):
         debugprint("From page: {}".format(from_page))
-        if from_page.startswith("/login"):
+        if from_page.startswith("/login") or from_page.startswith("/logout"):
             from_page="/"
         if self.valid_key(key, cherrypy.request.db):
             cherrypy.session[SESSION_KEY] = key
             raise cherrypy.HTTPRedirect(from_page)
         else:
-            #return self.generate_loginform(from_page=from_page)
-            return """<html><body><h2>Enter secret key</h2>
-                <form method="post" action="/login?from_page={}">
-                Secret key: <input type="text" name="key" />
-                <input type="submit" value="Submit" />
-                </body></html>""".format(from_page)
-
-
+            return {'from_page': from_page}
+            
     @protect()
     @cherrypy.expose
-    def logout():
+    def logout(self):
+        # TODO: this only works sometimes for me? 
         this_session = cherrypy.session.get(SESSION_KEY, None)
         cherrypy.session[SESSION_KEY] = None
         return "Logout successful"
 
     @protect()
     @cherrypy.expose
-    def shockup(self, myFile):
-        out = """<html>
-        <body>
-            myFile length: %s<br />
-            myFile filename: %s<br />
-            myFile mime-type: %s
-        </body>
-        </html>"""
-
-        #re_images = re.compile('\.(jpg|jpeg|png|tif|tiff|raw|gif|bmp|svg)$')
-        #re_audio = re.compile('\.(mp3|m4a)$')
-
-        #if re_images.match(myFile.filename.lower()):
-
-        #if myFile.filename.lower().endswith('.jpg')
+    def shockup(self, myFile=None):
+        if not myFile:
+            raise cherrypy.HTTPRedirect('/')
 
         newfile = ShockFile(myFile.filename, myFile.file.read(), myFile.content_type.value)
         cherrypy.request.db.add(newfile)
         debugprint('Upload complete! {}'.format(newfile))
 
-        # TODO: this stuff doesn't seem to actually happen? hmm. 
-        return out % (newfile.length, myFile.filename, myFile.content_type)
+        return
 
     @protect()
     @cherrypy.expose
@@ -268,81 +253,12 @@ class ShockRoot:
         return f.data
 
     @protect()
+    @cherrypy.tools.mako(filename='file.mako')
     @cherrypy.expose 
     def file(self, fileid):
         f = cherrypy.request.db.query(ShockFile).filter_by(id=fileid)[0]
         debugprint(f.__repr__())
-        html = '<html><head><title>{}</title>'.format(f.filename)
-        html+= '<script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.6/jquery.min.js"></script>'
-        html+= '<link type="text/css" href="/static/jplayer-skin/jplayer.blue.monday.css" rel="stylesheet" />'
-        html+= '<script type="text/javascript" src="/static/jplayer/jquery.jplayer.min.js"></script>'
-        html+= '''
-            <script type="text/javascript">
-              $(document).ready(function(){
-                $("#jquery_jplayer_1").jPlayer({
-                  ready: function () {
-                    $(this).jPlayer("setMedia", {
-            '''
-        html+= '''
-                      m4a: "http://localhost:7979/rawfile?fileid=%s",
-                    });
-                  },
-                  swfPath: "/static/jplayer",
-                  supplied: "m4a"
-                });
-              });
-            </script>
-            ''' %fileid
-        html+= '<body><h2>File ID: {}; Name: {}</h2>'.format(f.id, f.filename)
-        html+= '<p>Type: {}; Length: {}</p>'.format(f.content_type, f.length)
-        if f.content_type.startswith('image'):
-            html += '<p><img src=/rawfile?fileid={} /></p>'.format(fileid)
-        if f.content_type.startswith('audio'):
-            html += '''
-                <div id="jquery_jplayer_1" class="jp-jplayer"></div>
-                <div id="jp_container_1" class="jp-audio">
-                  <div class="jp-type-single">
-                    <div class="jp-gui jp-interface">
-                      <ul class="jp-controls">
-                        <li><a href="javascript:;" class="jp-play" tabindex="1">play</a></li>
-                        <li><a href="javascript:;" class="jp-pause" tabindex="1">pause</a></li>
-                        <li><a href="javascript:;" class="jp-stop" tabindex="1">stop</a></li>
-                        <li><a href="javascript:;" class="jp-mute" tabindex="1" title="mute">mute</a></li>
-                        <li><a href="javascript:;" class="jp-unmute" tabindex="1" title="unmute">unmute</a></li>
-                        <li><a href="javascript:;" class="jp-volume-max" tabindex="1" title="max volume">max volume</a></li>
-                      </ul>
-                      <div class="jp-progress">
-                        <div class="jp-seek-bar">
-                          <div class="jp-play-bar"></div>
-                        </div>
-                      </div>
-                      <div class="jp-volume-bar">
-                        <div class="jp-volume-bar-value"></div>
-                      </div>
-                      <div class="jp-time-holder">
-                        <div class="jp-current-time"></div>
-                        <div class="jp-duration"></div>
-                        <ul class="jp-toggles">
-                          <li><a href="javascript:;" class="jp-repeat" tabindex="1" title="repeat">repeat</a></li>
-                          <li><a href="javascript:;" class="jp-repeat-off" tabindex="1" title="repeat off">repeat off</a></li>
-                        </ul>
-                      </div>
-                    </div>
-                    <div class="jp-title">
-                      <ul>
-                        <li>Bubble</li>
-                      </ul>
-                    </div>
-                    <div class="jp-no-solution">
-                      <span>Update Required</span>
-                      To play the media you will need to either update your browser to a recent version or update your <a href="http://get.adobe.com/flashplayer/" target="_blank">Flash plugin</a>.
-                    </div>
-                  </div>
-                </div>
-              '''
-
-        html+= '</body></html>'
-        return html
+        return {'file':f}
         
         
 def reinit():
@@ -388,10 +304,9 @@ if __name__=='__main__':
 
     cherrypy.tools.shockauth = cherrypy.Tool('before_handler', protect_handler)
 
+
     cherrypy.config.update({'server.socket_port' : 7979,
                             'server.socket_host' : '0.0.0.0',
-                            # TODO: this is for debugging databases with. fix for deployment!
-                            #'server.thread_pool' : 1
                             }) 
     config_root = {
         '/' : {
@@ -404,6 +319,9 @@ if __name__=='__main__':
             'tools.sessions.timeout': 525600, # ~1 year in minutes
             
             'tools.staticdir.root': scriptdir, 
+
+            'tools.mako.collection_size': 500,
+            'tools.mako.directories': templepath,
             },
         '/static' : {
             'tools.staticdir.on': True,

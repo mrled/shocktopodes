@@ -1,3 +1,5 @@
+## -*- mode: html -*-
+
 <html>
   <head>
     <link rel="stylesheet" href="static/swissshock.css" />
