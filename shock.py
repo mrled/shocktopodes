@@ -9,6 +9,7 @@ import shutil
 import urllib
 import argparse
 import configparser
+import hashlib
 
 # Manual installation requried for these
 import cherrypy 
@@ -31,7 +32,8 @@ from globalshock import *
 
 Base = declarative_base()
 scriptdir = os.path.abspath(os.curdir)
-sqlitedbpath = os.path.join(scriptdir, 'db.shocktopodes.sqlite')
+sqlitedbpath = os.path.join(scriptdir, 'db.sqlite')
+filedbpath = os.path.join(scriptdir, 'db.files')
 sessionpath = os.path.join(scriptdir,'sessions.cherrypy')
 SESSION_KEY='_shocktopodes_session'
 templepath = os.path.join(scriptdir, 'temple')
@@ -39,6 +41,12 @@ templepath = os.path.join(scriptdir, 'temple')
 configpath = os.path.join(scriptdir, 'config.local')
 config = configparser.ConfigParser()
 config.read(configpath)
+
+def sha1hash(data):
+    h = hashlib.sha1()
+    h.update(data)
+    sha1hash = h.hexdigest()
+    return sha1hash
 
 class SAEnginePlugin(plugins.SimplePlugin):
     def __init__(self, bus):
@@ -172,20 +180,64 @@ class ShockFile(Base):
     id = Column(Integer, primary_key=True)
     filename = Column(String)
     original_filename = Column(String)
-    data = Column(LargeBinary)
     atime = Column(DateTime)
-    content_type = Column(String) # TODO
+    content_type = Column(String)
     length = Column(Integer)
-    def __init__(self, filename, data, content_type):
+    shahash = Column(String)
+    localpath = Column(String)
+    fullurl = Column(String)
+    filext = Column(String)
+    def __init__(self, filename, content_type, length, sha1hash):
         self.filename = self.original_filename = filename
-        self.data = data
         self.atime = datetime.datetime.utcnow()
-        self.length = len(data)
+        self.length = length
+        # TODO: CherryPy guesses the mime-type based on the filename. Do I have
+        #       access to that mapping?
+        #       <http://docs.cherrypy.org/stable/progguide/files/static.html>
+        #       "using the Python mimetypes module"
+        # TODO: Since I'm storing the filext anyway, do I even need this? Probably not...
         self.content_type = content_type
+        # TODO: This is kinda dumb. Use the original filename if it had one? 
+        #       Is that a good idea? 
+        if content_type == 'audio/mp4':
+            self.filext = '.m4a'
+        elif content_type == 'audio/mp3': # TODO: is this the right mimetype?
+            self.filext = '.mp3'
+        elif content_type == 'image/jpeg': 
+            self.filext = '.jpeg'
+        else:
+            self.filext = ''
+        self.sha1hash = sha1hash
+        self.localpath = os.path.join(filedbpath, self.sha1hash+self.filext)
+        self.fullurl = '{}/filedb/{}'.format(config['general']['rooturl'], self.sha1hash+self.filext)
     def __repr__(self):
         return "<ShockFile({}, a {} of size {})>".format(self.filename, 
                                                          self.content_type,
                                                          self.length)
+    @classmethod 
+    def fromdata(self, filename, content_type, data):
+        """
+        Create an instance of the ShockFile class from data.
+
+        Pass data directly to this function, and it will create an ORM object
+        and also save the data to the filesystem.
+
+        This instantiator also handles computing the hash and the content length.
+
+        Useful because at upload time you have a filename and data but you'd have 
+        compute the length and hash every time and I'm lazy so. 
+        """
+        h = hashlib.sha1()
+        h.update(data)
+        sha1hash = h.hexdigest()
+        length = len(data)
+        sf = ShockFile(filename, content_type, length, sha1hash)
+
+        f = open(sf.localpath, 'bw')
+        f.write(data)
+        f.close()
+
+        return sf
 
 def protect_handler(*args, **kwargs):
     conditions = cherrypy.request.config.get('auth.require', None)
@@ -252,28 +304,31 @@ class ShockRoot:
         if not myFile:
             raise cherrypy.HTTPRedirect('/')
 
-        newfile = ShockFile(myFile.filename, myFile.file.read(), myFile.content_type.value)
-        cherrypy.request.db.add(newfile)
-        debugprint('Upload complete! {}'.format(newfile))
+        data = myFile.file.read()
 
+        newfile = ShockFile.fromdata(myFile.filename, myFile.content_type.value, data)
+        cherrypy.request.db.add(newfile)
+
+        debugprint('Upload complete! {}'.format(newfile))
         return
 
     @protect()
     @cherrypy.expose
     def rawfile(self, fileid):
-        f = cherrypy.request.db.query(ShockFile).filter_by(id=fileid)[0]
-        cherrypy.response.headers['content-type'] = f.content_type
-        debugprint("Returning raw file #{} named {} of type {}".format(f.id, f.filename, f.content_type))
-        return f.data
+        shockfile = cherrypy.request.db.query(ShockFile).filter_by(id=fileid)[0]
+        cherrypy.response.headers['content-type'] = shockfile.content_type
+        debugprint("Returning raw file #{} named {} of type {}".format(shockfile.id, 
+                                                                       shockfile.filename, 
+                                                                       shockfile.content_type))
+        raise cherrypy.HTTPRedirect('/filedb'+shockfile.sha1hash)
 
     @protect()
     @cherrypy.tools.mako(filename='file.mako')
     @cherrypy.expose 
     def file(self, fileid):
-        f = cherrypy.request.db.query(ShockFile).filter_by(id=fileid)[0]
-        debugprint(f.__repr__())
-        #return {'file':f, 'config':config}
-        return {'file':f}
+        shockfile = cherrypy.request.db.query(ShockFile).filter_by(id=fileid)[0]
+        debugprint(shockfile.__repr__())
+        return {'file':shockfile}
         
         
 def reinit():
@@ -283,11 +338,15 @@ def reinit():
     except OSError:
         pass # in case it doesn't exist
     os.makedirs(sessionpath, mode=0o700, exist_ok=True)
-
     try:
         os.remove(sqlitedbpath)
     except OSError:
         pass # in case it doesn't exist
+    try:
+        shutil.rmtree(filedbpath)
+    except OSError:
+        pass
+    os.makedirs(filedbpath, mode=0o700, exist_ok=True)
 
     engine = create_engine('sqlite:///%s' % sqlitedbpath, echo=True)
     Base.metadata.create_all(engine)
@@ -296,14 +355,24 @@ def reinit():
     sess = S()
     sess.add(Key('yellowrock'))
 
-    f = open(os.path.join(scriptdir, 'static', 'frogsmile.jpg'), 'br')
-    eximage = ShockFile('frogsmile.jpg', f.read(), 'image/jpeg')
-    f.close()
+    rf = open(os.path.join(scriptdir, 'static', 'frogsmile.jpg'), 'br')
+    data = rf.read()
+    rf.close()
+    sha1 = sha1hash(data)
+    eximage = ShockFile('frogsmile.jpg', 'image/jpeg', len(data), sha1)
+    wf = open(eximage.localpath, 'bw')
+    wf.write(data)
+    wf.close()
 
-    f = open(os.path.join(scriptdir, 'static', 'predclick.m4a'), 'br')
-    exaudio = ShockFile('predclick.m4a', f.read(), 'audio/mp4')
-    f.close()
-
+    rf = open(os.path.join(scriptdir, 'static', 'predclick.m4a'), 'br')
+    data = rf.read()
+    rf.close()
+    sha1 = sha1hash(data)
+    exaudio = ShockFile('predclick.m4a', 'audio/mp4', len(data), sha1)
+    wf = open(exaudio.localpath, 'bw')
+    wf.write(data)
+    wf.close()
+    
     sess.add(eximage)
     sess.add(exaudio)
 
@@ -329,10 +398,11 @@ if __name__=='__main__':
     cherrypy.config.update({'server.socket_port' : 7979,
                             'server.socket_host' : '0.0.0.0',
                             }) 
-    config_root = {
+    cherrypy_root_config = {
         '/' : {
             'tools.db.on': True, 
             'tools.shockauth.on': True,
+
             'tools.sessions.on': True,
             'tools.sessions.name': 'shocktopodes',
             'tools.sessions.storage_type': 'file',
@@ -341,16 +411,23 @@ if __name__=='__main__':
             
             'tools.staticdir.root': scriptdir, 
 
+            # TODO: no idea what collection_size is for
             'tools.mako.collection_size': 500,
             'tools.mako.directories': templepath,
+
             },
         '/static' : {
             'tools.staticdir.on': True,
             'tools.staticdir.dir': 'static',
-            }
+            },
+        # TODO: this means the directory isn't password protected oops
+        '/filedb' : {
+            'tools.staticdir.on': True,
+            'tools.staticdir.dir': 'db.files',
+            },
         }
     
-    cherrypy.tree.mount(ShockRoot(), '/', config_root)
+    cherrypy.tree.mount(ShockRoot(), '/', cherrypy_root_config)
 
     #cherrypy.server.start()
     cherrypy.engine.start()

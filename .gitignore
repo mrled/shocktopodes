@@ -1,4 +1,5 @@
 *.sqlite
+db.files
 *~
 *.~1~
 __pycache__

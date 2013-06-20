@@ -19,7 +19,7 @@
           $("#jquery_jplayer_1").jPlayer({
             ready: function () {
               $(this).jPlayer("setMedia", {
-                m4a: "${config['general']['rooturl']}/rawfile?fileid=${file.id}",
+                m4a: "${file.fullurl}",
               });
             },
             swfPath: "/static/jplayer",
@@ -33,7 +33,7 @@
     <h2>File ID: ${file.id}; Name: ${file.filename}</h2>
     <p>Type: ${file.content_type}; Length: ${file.length}</p>
     %if type == 'image':
-      <p><img src=/rawfile?fileid=${file.id} /></p>
+      <p><img src=${file.fullurl} /></p>
     %elif type == 'audio':
       <div id="jquery_jplayer_1" class="jp-jplayer"></div>
       <div id="jp_container_1" class="jp-audio">
