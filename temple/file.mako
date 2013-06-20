@@ -69,7 +69,7 @@
           </div>
           <div class="jp-title">
             <ul>
-              <li>Bubble</li>
+              <li>${file.filename}</li>
             </ul>
           </div>
           <div class="jp-no-solution">
