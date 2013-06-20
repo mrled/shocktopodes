@@ -8,6 +8,7 @@ import os
 import shutil
 import urllib
 import argparse
+import configparser
 
 # Manual installation requried for these
 import cherrypy 
@@ -23,6 +24,7 @@ from sqlalchemy.types import String, Integer, LargeBinary, DateTime
 from mako.template import Template
 from mako.runtime import Context
 from mako.lookup import TemplateLookup
+from mako.exceptions import RichTraceback
 
 # Project files
 from globalshock import *
@@ -34,6 +36,9 @@ sessionpath = os.path.join(scriptdir,'sessions.cherrypy')
 SESSION_KEY='_shocktopodes_session'
 templepath = os.path.join(scriptdir, 'temple')
 #temple = TemplateLookup(directories=[templepath])
+configpath = os.path.join(scriptdir, 'config.local')
+config = configparser.ConfigParser()
+config.read(configpath)
 
 class SAEnginePlugin(plugins.SimplePlugin):
     def __init__(self, bus):
@@ -113,6 +118,15 @@ class MakoHandler(cherrypy.dispatch.LateParamPageHandler):
     def __call__(self):
         env = globals().copy()
         env.update(self.next_handler())
+
+        try:
+            rendered = self.template.render(**env)
+        except:
+            traceback = RichTraceback()
+            for (filename, lineno, function, line) in traceback.traceback:
+                print('File {} line #{} function {} \n    {}'.format(filename, lineno, function, line))
+            #print('{}: {}'.format(traceback.error.__class__.__name__), traceback.error)
+
         return self.template.render(**env)
 
 
@@ -212,7 +226,7 @@ class ShockRoot:
         else:
             return False
 
-    @cherrypy.tools.mako(filename='file.mako')
+    @cherrypy.tools.mako(filename='login.mako')
     @cherrypy.expose
     def login(self, key=None, from_page='/'):
         debugprint("From page: {}".format(from_page))
@@ -258,15 +272,22 @@ class ShockRoot:
     def file(self, fileid):
         f = cherrypy.request.db.query(ShockFile).filter_by(id=fileid)[0]
         debugprint(f.__repr__())
+        #return {'file':f, 'config':config}
         return {'file':f}
         
         
 def reinit():
 
-    shutil.rmtree(sessionpath)
+    try:
+        shutil.rmtree(sessionpath)
+    except OSError:
+        pass # in case it doesn't exist
     os.makedirs(sessionpath, mode=0o700, exist_ok=True)
 
-    os.remove(sqlitedbpath)
+    try:
+        os.remove(sqlitedbpath)
+    except OSError:
+        pass # in case it doesn't exist
 
     engine = create_engine('sqlite:///%s' % sqlitedbpath, echo=True)
     Base.metadata.create_all(engine)

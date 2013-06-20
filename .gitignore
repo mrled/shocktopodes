@@ -3,3 +3,4 @@
 *.~1~
 __pycache__
 sessions.cherrypy
+config.local

@@ -6,21 +6,20 @@
         type='audio'
         needjplayer = True
 %>
-
 <html>
   <head>
     <title>${file.filename}</title>
     %if needjplayer: 
-    <script type="text/javascript" 
-            src="http://ajax.googleapis.com/ajax/libs/jquery/1.6/jquery.min.js"></script>'
-      <link type="text/css" href="/static/jplayer-skin/jplayer.blue.monday.css" rel="stylesheet" />'
-      <script type="text/javascript" src="/static/jplayer/jquery.jplayer.min.js"></script>'
+      <script type="text/javascript" 
+              src="http://ajax.googleapis.com/ajax/libs/jquery/1.6/jquery.min.js"></script>
+      <link type="text/css" href="/static/jplayer-skin/jplayer.blue.monday.css" rel="stylesheet" />
+      <script type="text/javascript" src="/static/jplayer/jquery.jplayer.min.js"></script>
       <script type="text/javascript">
         $(document).ready(function(){
           $("#jquery_jplayer_1").jPlayer({
             ready: function () {
               $(this).jPlayer("setMedia", {
-                m4a: "http://localhost:7979/rawfile?fileid=${file.id}",
+                m4a: "${config['general']['rooturl']}/rawfile?fileid=${file.id}",
               });
             },
             swfPath: "/static/jplayer",
