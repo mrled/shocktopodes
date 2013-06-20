@@ -1,0 +1,7 @@
+# Do not change this file. 
+# Instead, copy to 'config.local' and modify to suit your needs.
+
+[general]
+bind_addr = 127.0.0.1
+url_addr = localhost
+port = 7979

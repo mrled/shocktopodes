@@ -38,9 +38,13 @@ sessionpath = os.path.join(scriptdir,'sessions.cherrypy')
 SESSION_KEY='_shocktopodes_session'
 templepath = os.path.join(scriptdir, 'temple')
 #temple = TemplateLookup(directories=[templepath])
-configpath = os.path.join(scriptdir, 'config.local')
-config = configparser.ConfigParser()
-config.read(configpath)
+
+defaultconfigpath = os.path.join(scriptdir, 'config.default')
+localconfigpath = os.path.join(scriptdir, 'config.local')
+allconfig = configparser.ConfigParser()
+allconfig.read([defaultconfigpath, localconfigpath])
+config = allconfig['general']
+config['rooturl'] = 'http://' + config['url_addr'] + ':' + config['port']
 
 def sha1hash(data):
     h = hashlib.sha1()
@@ -209,7 +213,7 @@ class ShockFile(Base):
             self.filext = ''
         self.sha1hash = sha1hash
         self.localpath = os.path.join(filedbpath, self.sha1hash+self.filext)
-        self.fullurl = '{}/filedb/{}'.format(config['general']['rooturl'], self.sha1hash+self.filext)
+        self.fullurl = '{}/filedb/{}'.format(config['rooturl'], self.sha1hash+self.filext)
     def __repr__(self):
         return "<ShockFile({}, a {} of size {})>".format(self.filename, 
                                                          self.content_type,
@@ -395,8 +399,8 @@ if __name__=='__main__':
     cherrypy.tools.shockauth = cherrypy.Tool('before_handler', protect_handler)
 
 
-    cherrypy.config.update({'server.socket_port' : 7979,
-                            'server.socket_host' : '0.0.0.0',
+    cherrypy.config.update({'server.socket_port' : int(config['port']),
+                            'server.socket_host' : config['bind_addr'],
                             }) 
     cherrypy_root_config = {
         '/' : {
