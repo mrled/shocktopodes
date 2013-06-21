@@ -5,3 +5,4 @@
 bind_addr = 127.0.0.1
 url_addr = localhost
 port = 7979
+debug = no

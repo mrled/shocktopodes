@@ -1,22 +1,9 @@
-<html>
-  <head>
-    <link rel="stylesheet" href="static/swissshock.css" />
-    <link rel="stylesheet" href="static/dropzone/css/basic.css" />
-    <style type="text/css">
-      .shock-column-set {
-        float: left;
-        padding: 10px;
-        margin: 50px 10px 10px 10px;
-      }
-      .shock-column {
-        float: left; 
-        max-width:45%;
-        min-width:250px;
-        margin: 15px;
-      }
-    </style>
-  </head>
-  <body>
+<%inherit file="_base.mako" />
+
+<%block name="title">
+  Shocktopodes
+</%block>
+
     <h1>SHOCKTOPODES</h1>
     <div class="shock-column-set">
       <div class="shock-column">
@@ -40,5 +27,4 @@
               class="dropzone"
               id="shockzone"></form>
       </div>
-  </body>
-</html>
+

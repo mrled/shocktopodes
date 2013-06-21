@@ -318,35 +318,19 @@ table tr:nth-child(even),table td:nth-child(even)
     display: none;
 }
 
-.mrl-firehose-column-set {
-	/*border-top:1px solid #8cacbb;*/   /*these are handled by the h1-h5 border-bottom stuff now*/
-    /*border-bottom: 1px solid #ccc; */
-    float: left;
-    padding: 10px;
-    margin: 50px 10px 10px 10px;
+.shock-column-set {
+  float: left;
+  padding: 10px;
+  margin: 50px 10px 10px 10px;
 }
-.mrl-firehose-column {
-    float: left; 
-    max-width:20%;
-    min-width:250px;
-    margin: 15px;
+.shock-column {
+  float: left; 
+  max-width:45%;
+  min-width:250px;
+  margin: 15px;
 }
 
-/* note that I modified ikiwiki's page.tmpl such that comments came AFTER tags, inside the footer, rather than the page body */
-.tags {
-	border-bottom:1px solid #8cacbb;
-    margin-bottom:15px;
-    padding-bottom:15px;
-}
-#comments {
-	border-bottom:1px solid #8cacbb;
-    margin-bottom:15px;
-    padding-bottom:15px;
-    padding-left:40px;
-}
-.addcomment {
-    margin-top:1em;
-}
+
 /* changing border color from default to match stuff from dokuwiki */
 .pageheader .actions ul {
 	border-bottom:1px solid #8cacbb;

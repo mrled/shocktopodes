@@ -1,15 +1,11 @@
-<%
-    needjplayer = False
-    if file.content_type.startswith('image'):
-        type='image'
-    elif file.content_type.startswith('audio'):
-        type='audio'
-        needjplayer = True
-%>
-<html>
-  <head>
-    <title>${file.filename}</title>
-    %if needjplayer: 
+<%inherit file="_base.mako" />
+
+<%block name="title">
+  ${shockfile.filename} - Shocktopodes
+</%block>
+
+%if shockfile.jplayertype: 
+  <%block name="underheader">
       <script type="text/javascript" 
               src="http://ajax.googleapis.com/ajax/libs/jquery/1.6/jquery.min.js"></script>
       <link type="text/css" href="/static/jplayer-skin/jplayer.blue.monday.css" rel="stylesheet" />
@@ -19,22 +15,24 @@
           $("#jquery_jplayer_1").jPlayer({
             ready: function () {
               $(this).jPlayer("setMedia", {
-                m4a: "${file.fullurl}",
+                ${shockfile.jplayertype}: "${shockfile.fullurl}",
+                ##m4a: "${shockfile.fullurl}",
               });
             },
             swfPath: "/static/jplayer",
-            supplied: "m4a"
+            supplied: "${shockfile.jplayertype}"
+            ##supplied: "m4a",
           });
         });
       </script>
-    %endif
-  </head>
-  <body>
-    <h2>File ID: ${file.id}; Name: ${file.filename}</h2>
-    <p>Type: ${file.content_type}; Length: ${file.length}</p>
-    %if type == 'image':
-      <p><img src=${file.fullurl} /></p>
-    %elif type == 'audio':
+  </%block> 
+%endif
+
+    <h2>File ID: ${shockfile.id}; Name: ${shockfile.filename}</h2>
+    <p>Type: ${shockfile.content_type}; Length: ${shockfile.length}</p>
+    %if shockfile.content_type.startswith('image'):
+      <p><img src=${shockfile.fullurl} /></p>
+    %elif shockfile.content_type.startswith('audio'):
       <div id="jquery_jplayer_1" class="jp-jplayer"></div>
       <div id="jp_container_1" class="jp-audio">
         <div class="jp-type-single">
@@ -69,7 +67,7 @@
           </div>
           <div class="jp-title">
             <ul>
-              <li>${file.filename}</li>
+              <li>${shockfile.filename}</li>
             </ul>
           </div>
           <div class="jp-no-solution">
@@ -81,5 +79,4 @@
         </div>
       </div>
     % endif
-  </body>
-</html>
+

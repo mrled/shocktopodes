@@ -28,8 +28,9 @@ from mako.lookup import TemplateLookup
 from mako.exceptions import RichTraceback
 
 # Project files
-from globalshock import *
+#from globalshock import *
 
+iso8601 = "%Y-%m-%d:%H-%M-%S"
 Base = declarative_base()
 scriptdir = os.path.abspath(os.curdir)
 sqlitedbpath = os.path.join(scriptdir, 'db.sqlite')
@@ -45,6 +46,16 @@ allconfig = configparser.ConfigParser()
 allconfig.read([defaultconfigpath, localconfigpath])
 config = allconfig['general']
 config['rooturl'] = 'http://' + config['url_addr'] + ':' + config['port']
+
+def debugprint(text):
+    if config.getboolean('debug'):
+        print("DEBUG: " + text)
+
+if config.getboolean('debug'):
+    from pdb import set_trace as strace
+else:
+    def strace(): 
+        pass
 
 def sha1hash(data):
     h = hashlib.sha1()
@@ -134,10 +145,14 @@ class MakoHandler(cherrypy.dispatch.LateParamPageHandler):
         try:
             rendered = self.template.render(**env)
         except:
-            traceback = RichTraceback()
-            for (filename, lineno, function, line) in traceback.traceback:
-                print('File {} line #{} function {} \n    {}'.format(filename, lineno, function, line))
-            #print('{}: {}'.format(traceback.error.__class__.__name__), traceback.error)
+            if config.getboolean('debug'):
+                traceback = RichTraceback()
+                for (filename, lineno, function, line) in traceback.traceback:
+                    print('File {} line #{} function {}'.format(filename, lineno, function))
+                    print('    {}'.format(line))
+                    #print('{}: {}'.format(traceback.error.__class__.__name__), traceback.error)
+            else:
+                raise
 
         return self.template.render(**env)
 
@@ -191,6 +206,7 @@ class ShockFile(Base):
     localpath = Column(String)
     fullurl = Column(String)
     filext = Column(String)
+    jplayertype = Column(String)
     def __init__(self, filename, content_type, length, sha1hash):
         self.filename = self.original_filename = filename
         self.atime = datetime.datetime.utcnow()
@@ -204,16 +220,24 @@ class ShockFile(Base):
         # TODO: This is kinda dumb. Use the original filename if it had one? 
         #       Is that a good idea? 
         if content_type == 'audio/mp4':
-            self.filext = '.m4a'
+            self.jplayertype = 'm4a'
         elif content_type == 'audio/mp3': # TODO: is this the right mimetype?
-            self.filext = '.mp3'
-        elif content_type == 'image/jpeg': 
-            self.filext = '.jpeg'
+            self.jplayertype = 'mp3'
+        # elif content_type == 'image/jpeg': 
+        #     self.filext = 'jpeg'
         else:
-            self.filext = ''
+            self.jplayertype = False
         self.sha1hash = sha1hash
-        self.localpath = os.path.join(filedbpath, self.sha1hash+self.filext)
-        self.fullurl = '{}/filedb/{}'.format(config['rooturl'], self.sha1hash+self.filext)
+        # TODO: do this check first so that instead of uploading the new file it 
+        # doesn't accept it
+        try:
+            os.makedirs(os.path.join(filedbpath, self.sha1hash), mode=0o700, exist_ok=False)
+        except FileExistsError:
+            pass
+        #self.localpath = os.path.join(filedbpath, self.sha1hash+self.filext)
+        self.localpath = os.path.join(filedbpath, self.sha1hash, self.filename)
+        #self.fullurl = '{}/filedb/{}'.format(config['rooturl'], self.sha1hash+self.filext)
+        self.fullurl = '{}/filedb/{}/{}'.format(config['rooturl'], self.sha1hash, self.filename)
     def __repr__(self):
         return "<ShockFile({}, a {} of size {})>".format(self.filename, 
                                                          self.content_type,
@@ -231,6 +255,7 @@ class ShockFile(Base):
         Useful because at upload time you have a filename and data but you'd have 
         compute the length and hash every time and I'm lazy so. 
         """
+        # TODO: hash the data and don't accept the upload if the data already exists
         h = hashlib.sha1()
         h.update(data)
         sha1hash = h.hexdigest()
@@ -299,7 +324,7 @@ class ShockRoot:
     def logout(self):
         # TODO: this only works sometimes for me? 
         this_session = cherrypy.session.get(SESSION_KEY, None)
-        cherrypy.session[SESSION_KEY] = None
+        cherrypy.session[SESSION_KEY] = ""
         return "Logout successful"
 
     @protect()
@@ -332,7 +357,7 @@ class ShockRoot:
     def file(self, fileid):
         shockfile = cherrypy.request.db.query(ShockFile).filter_by(id=fileid)[0]
         debugprint(shockfile.__repr__())
-        return {'file':shockfile}
+        return {'shockfile':shockfile}
         
         
 def reinit():
@@ -428,6 +453,7 @@ if __name__=='__main__':
         '/filedb' : {
             'tools.staticdir.on': True,
             'tools.staticdir.dir': 'db.files',
+            'tools.staticdir.content_types': {'m4a': 'audio/mp4'},
             },
         }
     

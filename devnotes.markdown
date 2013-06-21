@@ -14,7 +14,12 @@ CherryPy doesn't support byte-range requests except for static files. Seeking in
 
 I store the files using their sha1 hash as the filename, with a file extension (not necessarily the original one, but one associated with the mime type) at the end. This lets CherryPy send out a content-type based on the filename automatically, and enables the byte-range requests. 
 
-### Other projects to look at
+### Other projects & docs to look at
 
 - sabnzbd+ uses CherryPy on Python 2.x with Cheetah as a template engine. 
 - CherryMusic uses CherryPy and jplayer and works on Python 3.x.
+
+- [blog post on sqlalchemy + cherrypy](http://www.defuze.org/archives/222-integrating-sqlalchemy-into-a-cherrypy-application.html)
+- [AuthenticationAndAccessRestrictions](http://tools.cherrypy.org/wiki/AuthenticationAndAccessRestrictions)
+- [My auth stuff based on the above](http://stackoverflow.com/questions/12595394/how-do-you-use-cookies-and-http-basic-authentication-in-cherrypy)
+
