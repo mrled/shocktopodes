@@ -184,32 +184,33 @@ class Key(Base):
     __tablename__='keys'
     id = Column(Integer, primary_key=True)
     key = Column(String)
-    atime = Column(DateTime)
+    ctime = Column(DateTime)
 
     def __init__(self, key):
         Base.__init__(self)
         self.key = key
-        self.atime = datetime.datetime.utcnow()
+        self.ctime = datetime.datetime.utcnow()
     def __repr__(self):
         return "<Key({} created {})>".format(self.key, 
-                                             self.atime.strftime(iso8601))
+                                             self.ctime.strftime(iso8601))
 
 class ShockFile(Base):
     __tablename__='files'
     id = Column(Integer, primary_key=True)
     filename = Column(String)
     original_filename = Column(String)
-    atime = Column(DateTime)
+    ctime = Column(DateTime)
     content_type = Column(String)
     length = Column(Integer)
-    shahash = Column(String)
+    sha1hash = Column(String)
     localpath = Column(String)
     fullurl = Column(String)
+    metadataurl = Column(String)
     filext = Column(String)
     jplayertype = Column(String)
     def __init__(self, filename, content_type, length, sha1hash):
         self.filename = self.original_filename = filename
-        self.atime = datetime.datetime.utcnow()
+        self.ctime = datetime.datetime.utcnow()
         self.length = length
         # TODO: CherryPy guesses the mime-type based on the filename. Do I have
         #       access to that mapping?
@@ -238,10 +239,12 @@ class ShockFile(Base):
         self.localpath = os.path.join(filedbpath, self.sha1hash, self.filename)
         #self.fullurl = '{}/filedb/{}'.format(config['rooturl'], self.sha1hash+self.filext)
         self.fullurl = '{}/filedb/{}/{}'.format(config['rooturl'], self.sha1hash, self.filename)
+        self.metadataurl = '{}/file/{}'.format(config['rooturl'], self.sha1hash)
     def __repr__(self):
         return "<ShockFile({}, a {} of size {})>".format(self.filename, 
                                                          self.content_type,
                                                          self.length)
+
     @classmethod 
     def fromdata(self, filename, content_type, data):
         """
@@ -298,11 +301,14 @@ class ShockRoot:
     @cherrypy.tools.mako(filename='index.mako')
     @protect()
     def index(self):
-        return ''
+        recentfiles = []
+        for sf in cherrypy.request.db.query(ShockFile).order_by(ShockFile.ctime)[0:10]:
+            recentfiles += [sf,]
+        return {'recentfiles': recentfiles}
 
-    def valid_key(self, key, session):
+    def valid_key(self, key, sessiondb):
         # TODO: honestly is this the best way to search for a key, come on dude
-        if session.query(Key).filter(Key.key.in_([key,])).all():
+        if sessiondb.query(Key).filter(Key.key.in_([key,])).all():
             return True
         else:
             return False
@@ -354,8 +360,16 @@ class ShockRoot:
     @protect()
     @cherrypy.tools.mako(filename='file.mako')
     @cherrypy.expose 
-    def file(self, fileid):
+    def fileid(self, fileid):
         shockfile = cherrypy.request.db.query(ShockFile).filter_by(id=fileid)[0]
+        debugprint(shockfile.__repr__())
+        return {'shockfile':shockfile}
+
+    @protect()
+    @cherrypy.tools.mako(filename='file.mako')
+    @cherrypy.expose 
+    def file(self, sha1hash):
+        shockfile = cherrypy.request.db.query(ShockFile).filter_by(sha1hash=sha1hash)[0]
         debugprint(shockfile.__repr__())
         return {'shockfile':shockfile}
         
