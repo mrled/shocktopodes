@@ -31,7 +31,7 @@
     <h2>File ID: ${shockfile.id}; Name: ${shockfile.filename}</h2>
     <p>Type: ${shockfile.content_type}; Length: ${shockfile.length}</p>
     %if shockfile.content_type.startswith('image'):
-      <p><img src=${shockfile.fullurl} /></p>
+      <p><img src="${shockfile.fullurl}" /></p>
     %elif shockfile.content_type.startswith('audio'):
       <div id="jquery_jplayer_1" class="jp-jplayer"></div>
       <div id="jp_container_1" class="jp-audio">
