@@ -6,24 +6,20 @@
 
 %if shockfile.jplayertype: 
   <%block name="underheader">
-      <script type="text/javascript" 
-              src="http://ajax.googleapis.com/ajax/libs/jquery/1.6/jquery.min.js"></script>
       <link type="text/css" href="/static/jplayer-skin/jplayer.blue.monday.css" rel="stylesheet" />
       <script type="text/javascript" src="/static/jplayer/jquery.jplayer.min.js"></script>
       <script type="text/javascript">
-        $(document).ready(function(){
-          $("#jquery_jplayer_1").jPlayer({
-            ready: function () {
-              $(this).jPlayer("setMedia", {
-                ${shockfile.jplayertype}: "${shockfile.fullurl}",
-                ##m4a: "${shockfile.fullurl}",
-              });
-            },
-            swfPath: "/static/jplayer",
-            supplied: "${shockfile.jplayertype}"
-            ##supplied: "m4a",
-          });
+      $(document).ready(function(){
+        $("#jquery_jplayer_1").jPlayer({
+          ready: function () {
+            $(this).jPlayer("setMedia", {
+              ${shockfile.jplayertype}: "${shockfile.fullurl}",
+            });
+          },
+          swfPath: "/static/jplayer",
+          supplied: "${shockfile.jplayertype}",
         });
+      });
       </script>
   </%block> 
 %endif
