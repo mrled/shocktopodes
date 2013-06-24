@@ -27,3 +27,9 @@ I store the files using their sha1 hash as the filename, with a file extension (
 - [AuthenticationAndAccessRestrictions](http://tools.cherrypy.org/wiki/AuthenticationAndAccessRestrictions)
 - [My auth stuff based on the above](http://stackoverflow.com/questions/12595394/how-do-you-use-cookies-and-http-basic-authentication-in-cherrypy)
 
+### Mako + Emacs
+
+- <http://stackoverflow.com/questions/4462393> - lol this is a huge problem and it's big and dumb
+- <http://zwass.com/2011/07/01/installing-emacs-mmm-mako-mode/> - shitty solution, doesn't work at all for me b/c it leaves lots of things unhighlighted. 
+- <http://web-mode.org/> - no direct Mako support. looks like it does support Jinja2 though? Also I think the HTML highlighting is ugly. 
+- nXhtml's MuMaMo seems to totally fail, at least in Emacs24. Lots of errors and fucked up shit. Plus it defines its own colors? Eww. Much uglier than web-mode.
