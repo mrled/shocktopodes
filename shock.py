@@ -397,9 +397,6 @@ class ShockRoot:
     @protect()
     @cherrypy.expose
     def recentfiles(self, sincefile=None):
-        #rf = []
-        #for sf in cherrypy.request.db.query(ShockFile).order_by(ShockFile.ctime)[0:10]:
-        #    rf += sf
         rf = cherrypy.request.db.query(ShockFile).order_by(ShockFile.ctime)[0:10]
         return jsonshock.encode(rf)
         
