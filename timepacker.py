@@ -1,8 +1,8 @@
 import json
 import datetime
 
-time_fmt_Z      = '%Y-%m-%dT%H:%M:%SZ'  # The format with Z at the end, signifying UTC
-time_fmt_offset = '%Y-%m-%dT%H:%M:%S%z' # The format with +/-HHMM at the end, signifying offset.
+fmt_Z      = '%Y-%m-%dT%H:%M:%SZ'  # The format with Z at the end, signifying UTC
+fmt_offset = '%Y-%m-%dT%H:%M:%S%z' # The format with +/-HHMM at the end, signifying offset.
 
 def unpack(timestamp):
     """
@@ -16,14 +16,14 @@ def unpack(timestamp):
         raise Exception(e)
     try:
         # try the format with a Z at the end signifying UTC:
-        ret = datetime.datetime.strptime(timestamp, time_fmt_Z)
+        ret = datetime.datetime.strptime(timestamp, fmt_Z)
         # if that works, it'll be valid, but without a .tzinfo attribute, and 
         # therefore it will be what python calls a "naive" object - unaware of
         # the timezone. 
         # munge it to include an offset of 00:00, and then reparse with strptime
         # so now we have a .tzinfo attribute, perfect
         new_timestamp = timestamp[0:-1] + "+0000"
-        ret = datetime.datetime.strptime(new_timestamp, time_fmt_offset)
+        ret = datetime.datetime.strptime(new_timestamp, fmt_offset)
         return ret
     except ValueError as ve:
         pass
@@ -31,7 +31,7 @@ def unpack(timestamp):
     try:
         # try the format with an offset of the format +/-HHMM (which is easy to
         # do in python because of %z). this ends up timezonified also.
-        ret = datetime.datetime.strptime(timestamp, time_fmt_offset)
+        ret = datetime.datetime.strptime(timestamp, fmt_offset)
         return ret
     except ValueError as ve:
         pass
@@ -41,7 +41,7 @@ def unpack(timestamp):
         # rfc3339, but I have to munge the timestamp so that %z will take it)
         new_zoneinfo = timestamp[-6:-3] + timestamp[-2:]
         new_timestamp = timestamp[0:-6] + new_zoneinfo
-        ret = datetime.datetime.strptime(new_timestamp, time_fmt_offset)
+        ret = datetime.datetime.strptime(new_timestamp, fmt_offset)
         return ret
     except ValueError as ve:
         pass

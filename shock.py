@@ -10,6 +10,7 @@ import urllib
 import argparse
 import configparser
 import hashlib
+import json
 
 # Manual installation requried for these
 import cherrypy 
@@ -29,8 +30,8 @@ from mako.exceptions import RichTraceback
 
 # Project files
 #from globalshock import *
+import timepacker
 
-iso8601 = "%Y-%m-%d:%H-%M-%S"
 Base = declarative_base()
 scriptdir = os.path.abspath(os.curdir)
 sqlitedbpath = os.path.join(scriptdir, 'db.sqlite')
@@ -63,6 +64,17 @@ def sha1hash(data):
     sha1hash = h.hexdigest()
     return sha1hash
 
+
+class ShockEnc(json.JSONEncoder):
+    """JSONEncoder subclass for Shocktopodes data types"""
+    def default(self, o):
+        if isinstance(o, ShockFile):
+            return o.jsonize()
+        if isinstance(o, datetime.datetime):
+            return timepacker.pack(o)
+        else:
+            return json.JSONEncoder.default(self, o)
+jsonshock=ShockEnc()
 class SAEnginePlugin(plugins.SimplePlugin):
     def __init__(self, bus):
         """
@@ -192,7 +204,7 @@ class Key(Base):
         self.ctime = datetime.datetime.utcnow()
     def __repr__(self):
         return "<Key({} created {})>".format(self.key, 
-                                             self.ctime.strftime(iso8601))
+                                             self.ctime.strftime(timepacker.fmt_offset))
 
 class ShockFile(Base):
     __tablename__='files'
@@ -244,6 +256,15 @@ class ShockFile(Base):
         return "<ShockFile({}, a {} of size {})>".format(self.filename, 
                                                          self.content_type,
                                                          self.length)
+    def jsonize(self):
+        '''Return a dictionary that can be encoded to json'''
+        sf = {'sha1hash': self.sha1hash,
+              'filename': self.filename,
+              'fullurl': self.fullurl,
+              'metadataurl': self.metadataurl,
+              'ctime': self.ctime,
+              'objtype': "ShockFile"}
+        return sf
 
     @classmethod 
     def fromdata(self, filename, content_type, data):
@@ -372,7 +393,17 @@ class ShockRoot:
         shockfile = cherrypy.request.db.query(ShockFile).filter_by(sha1hash=sha1hash)[0]
         debugprint(shockfile.__repr__())
         return {'shockfile':shockfile}
+
+    @protect()
+    @cherrypy.expose
+    def recentfiles(self, sincefile=None):
+        #rf = []
+        #for sf in cherrypy.request.db.query(ShockFile).order_by(ShockFile.ctime)[0:10]:
+        #    rf += sf
+        rf = cherrypy.request.db.query(ShockFile).order_by(ShockFile.ctime)[0:10]
+        return jsonshock.encode(rf)
         
+
         
 def reinit():
 
