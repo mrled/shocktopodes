@@ -6,39 +6,63 @@
 
 <%block name="underheader">
   <script>
+  "use strict";
 
-    function update_rf_list() {
+  function update_rf_list(sflist) {
 
-      ##$("#no-recent-files").remove();
-      $("#recent-file-list").remove();
-      var rfl = '<ul id="recent-file-list"></ul>';
-      $('#recent-file-container').append(rfl);
+    if (sflist === undefined) {
+      alert("Failed to pass an argument to update_rf_list!")
+      return false;
+    }
+    else if (sflist.constructor !== Array) {
+      alert("Passed a bad value to update_rf_list!");
+      return false;
+    }
 
-      if (update_rf_list.arguments.length !== 0) {
-        maxfiles = 10;
-        if (maxfiles > update_rf_list.arguments.length) {
-          maxfiles = update_rf_list.arguments.length;
-        }
-        for (var i=0; i<maxfiles; i++) {
-          var recfile = update_rf_list.arguments[i];
-          var recli = "<li><a href=\"";
-          recli+= recfile.metadataurl;
-          recli+= "\">";
-          recli+= recfile.filename;
-          recli+= "</a></li>";
-          $("ul#recent-file-list").append(recli);            
-        }
+    $("#recent-file-list").remove();
+    var rfl = '<ul id="recent-file-list"></ul>';
+    $('#recent-file-container').append(rfl);
+
+    if (sflist.length === 0) {
+      var nofiles = '<li>No files have been uploaded to this server</li>';
+      $("ul#recent-file-list").append(nofiles);
+    } 
+    else {
+      var maxfiles = 10;
+      if (maxfiles > sflist.length) {
+        maxfiles = sflist.length;
       }
-      else {
-        var nofiles = '<li>No files have been uploaded to this server</li>';
-        $("ul#recent-file-list").append(nofiles);
+      for (var i=0; i<maxfiles; i++) {
+        var recfile = sflist[i];
+        var recli = "<li><a href=\"";
+        recli+= recfile.metadataurl;
+        recli+= "\">";
+        recli+= recfile.filename;
+        recli+= "</a></li>"; 
+        $("ul#recent-file-list").append(recli);            
       }
     }
 
+  }
 
-    $(document).ready(function() {
-      update_rf_list();
+  function get_rf() {
+    var rfarray = [];
+    function successfunc(data) {
+      rfarray = data;
+    }
+    $.ajax({
+      type: "GET",
+      url: "/recentfiles",
+      async: false,
+      datatype: "json", 
+      success:successfunc
     });
+    update_rf_list(rfarray);
+  }
+
+  $(document).ready(function() {
+    get_rf();
+  });
   </script>
 </%block>
 
@@ -56,28 +80,18 @@
 
       </script>
 
-    <%doc>
-    %if len(recentfiles) > 0:
-      <h2>Recently uploaded files:</h2>
-      <ul>
-        %for rf in recentfiles:
-          <li><a href="${rf.metadataurl}">${rf.filename}</a>
-        %endfor
-      </ul>
-    %else:
-      <h2>No recently uploaded files...</h2>
-    %endif
-    </%doc>
-
   </div>
   <div class="shock-column">
     <h2>Upload a file</h2>
     <script src="./static/dropzone/dropzone.js"></script>
     <script>
-      Dropzone.options.shockzone = {
-        // init: function() { this.on("addedfile", function(file) { alert("Added file."); });
-        paramName: "myFile",
-      };
+    function szinitfunc() {
+      this.on("success", get_rf)
+    }
+    Dropzone.options.shockzone = {
+      init: szinitfunc,
+      paramName: "myFile"
+    };
     </script>
 
     <form action="/shockup"

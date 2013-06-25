@@ -4,6 +4,7 @@
 # Python base modules
 import datetime
 import sqlite3
+import sys
 import os 
 import shutil
 import urllib
@@ -65,6 +66,23 @@ def sha1hash(data):
     return sha1hash
 
 
+def prettify(injson):
+    """
+    Pretty print JSON data so that it's easier for humans to read
+    """
+    if type(injson) is str:
+        # if you get a string, assume it contains json 
+        return json.dumps(json.loads(injson), indent = 2)
+    else:
+        try:
+            # sometimes you'll process json already with e.g. 
+            # json.loads(injson):
+            return json.dumps(injson, indent = 2) 
+        except:
+            # if that didn't work, don't know what injson is; just going to 
+            # return it unmodified
+            return injson
+
 class ShockEnc(json.JSONEncoder):
     """JSONEncoder subclass for Shocktopodes data types"""
     def default(self, o):
@@ -93,7 +111,8 @@ class SAEnginePlugin(plugins.SimplePlugin):
         self.bus.subscribe("bind", self.bind)
  
     def start(self):
-        self.sa_engine = create_engine('sqlite:///%s' % sqlitedbpath, echo=True)
+        self.sa_engine = create_engine('sqlite:///%s' % sqlitedbpath,
+            echo=True)
         Base.metadata.create_all(self.sa_engine)
  
     def stop(self):
@@ -160,9 +179,11 @@ class MakoHandler(cherrypy.dispatch.LateParamPageHandler):
             if config.getboolean('debug'):
                 traceback = RichTraceback()
                 for (filename, lineno, function, line) in traceback.traceback:
-                    print('File {} line #{} function {}'.format(filename, lineno, function))
+                    print('File {} line #{} function {}'.format(filename, 
+                        lineno, function))
                     print('    {}'.format(line))
-                    #print('{}: {}'.format(traceback.error.__class__.__name__), traceback.error)
+                    #print('{}: {}'.format(traceback.error.__class__.__name__), 
+                    #    traceback.error)
             else:
                 raise
 
@@ -203,8 +224,8 @@ class Key(Base):
         self.key = key
         self.ctime = datetime.datetime.utcnow()
     def __repr__(self):
-        return "<Key({} created {})>".format(self.key, 
-                                             self.ctime.strftime(timepacker.fmt_offset))
+        time_representation = self.ctime.strftime(timepacker.fmt_offset)
+        return "<Key({} created {})>".format(self.key, time_representation)
 
 class ShockFile(Base):
     __tablename__='files'
@@ -228,7 +249,8 @@ class ShockFile(Base):
         #       access to that mapping?
         #       <http://docs.cherrypy.org/stable/progguide/files/static.html>
         #       "using the Python mimetypes module"
-        # TODO: Since I'm storing the filext anyway, do I even need this? Probably not...
+        # TODO: Since I'm storing the filext anyway, do I even need this? 
+        #       Probably not...
         self.content_type = content_type
         # TODO: This is kinda dumb. Use the original filename if it had one? 
         #       Is that a good idea? 
@@ -244,14 +266,15 @@ class ShockFile(Base):
         # TODO: do this check first so that instead of uploading the new file it 
         # doesn't accept it
         try:
-            os.makedirs(os.path.join(filedbpath, self.sha1hash), mode=0o700, exist_ok=False)
+            os.makedirs(os.path.join(filedbpath, self.sha1hash), 
+                mode=0o700, exist_ok=False)
         except FileExistsError:
             pass
-        #self.localpath = os.path.join(filedbpath, self.sha1hash+self.filext)
         self.localpath = os.path.join(filedbpath, self.sha1hash, self.filename)
-        #self.fullurl = '{}/filedb/{}'.format(config['rooturl'], self.sha1hash+self.filext)
-        self.fullurl = '{}/filedb/{}/{}'.format(config['rooturl'], self.sha1hash, self.filename)
-        self.metadataurl = '{}/file/{}'.format(config['rooturl'], self.sha1hash)
+        self.fullurl = '{}/filedb/{}/{}'.format(config['rooturl'], 
+            self.sha1hash, self.filename)
+        self.metadataurl = '{}/file/{}'.format(config['rooturl'], 
+            self.sha1hash)
     def __repr__(self):
         return "<ShockFile({}, a {} of size {})>".format(self.filename, 
                                                          self.content_type,
@@ -274,12 +297,14 @@ class ShockFile(Base):
         Pass data directly to this function, and it will create an ORM object
         and also save the data to the filesystem.
 
-        This instantiator also handles computing the hash and the content length.
+        This instantiator also handles computing the hash and the content 
+        length.
 
-        Useful because at upload time you have a filename and data but you'd have 
-        compute the length and hash every time and I'm lazy so. 
+        Useful because at upload time you have a filename and data but you'd 
+        have to compute the length and hash every time and I'm lazy so. 
         """
-        # TODO: hash the data and don't accept the upload if the data already exists
+        # TODO: hash the data and don't accept the upload if the data already 
+        # exists
         h = hashlib.sha1()
         h.update(data)
         sha1hash = h.hexdigest()
@@ -298,14 +323,16 @@ def protect_handler(*args, **kwargs):
         debugprint("Accessing protected URL...")        
         # this is the page the user requested. if they have to log in first, 
         # they'll be redirected there after they do so
-        requested_page = urllib.parse.quote(cherrypy.request.request_line.split()[1])
+        crrl = cherrypy.request.request_line.split()
+        requested_page = urllib.parse.quote(crrl[1])
         try:
             # now try to see if there was a valid session from before
             this_session = cherrypy.session[SESSION_KEY]
             cherrypy.session.regenerate()
         except KeyError:
             debugprint("Redirecting to login page...")
-            raise cherrypy.HTTPRedirect("/login?from_page={}".format(requested_page))
+            redir_url = "/login?from_page={}".format(requested_page)
+            raise cherrypy.HTTPRedirect(redir_url)
 
 def protect(*conditions):
     def decorate(f):
@@ -322,10 +349,7 @@ class ShockRoot:
     @cherrypy.tools.mako(filename='index.mako')
     @protect()
     def index(self):
-        recentfiles = []
-        for sf in cherrypy.request.db.query(ShockFile).order_by(ShockFile.ctime)[0:10]:
-            recentfiles += [sf,]
-        return {'recentfiles': recentfiles}
+        return ''
 
     def valid_key(self, key, sessiondb):
         # TODO: honestly is this the best way to search for a key, come on dude
@@ -362,7 +386,8 @@ class ShockRoot:
 
         data = myFile.file.read()
 
-        newfile = ShockFile.fromdata(myFile.filename, myFile.content_type.value, data)
+        newfile = ShockFile.fromdata(myFile.filename, 
+            myFile.content_type.value, data)
         cherrypy.request.db.add(newfile)
 
         debugprint('Upload complete! {}'.format(newfile))
@@ -371,34 +396,38 @@ class ShockRoot:
     @protect()
     @cherrypy.expose
     def rawfile(self, fileid):
-        shockfile = cherrypy.request.db.query(ShockFile).filter_by(id=fileid)[0]
+        shockfile= cherrypy.request.db.query(ShockFile).filter_by(id=fileid)[0]
         cherrypy.response.headers['content-type'] = shockfile.content_type
-        debugprint("Returning raw file #{} named {} of type {}".format(shockfile.id, 
-                                                                       shockfile.filename, 
-                                                                       shockfile.content_type))
+
+        dp = "Returning raw file #{} named {} of type {}".format(shockfile.id,
+            shockfile.filename, shockfile.content_type)
+        debugprint(dp)
         raise cherrypy.HTTPRedirect('/filedb'+shockfile.sha1hash)
 
     @protect()
     @cherrypy.tools.mako(filename='file.mako')
     @cherrypy.expose 
     def fileid(self, fileid):
-        shockfile = cherrypy.request.db.query(ShockFile).filter_by(id=fileid)[0]
-        debugprint(shockfile.__repr__())
-        return {'shockfile':shockfile}
+        sf = cherrypy.request.db.query(ShockFile).filter_by(id=fileid)[0]
+        debugprint(sf.__repr__())
+        return {'shockfile':sf}
 
     @protect()
     @cherrypy.tools.mako(filename='file.mako')
     @cherrypy.expose 
     def file(self, sha1hash):
-        shockfile = cherrypy.request.db.query(ShockFile).filter_by(sha1hash=sha1hash)[0]
-        debugprint(shockfile.__repr__())
-        return {'shockfile':shockfile}
+        dbsess = cherrypy.request.db
+        sf = dbsess.query(ShockFile).filter_by(sha1hash=sha1hash)[0]
+        debugprint(sf.__repr__())
+        return {'shockfile':sf}
 
     @protect()
     @cherrypy.expose
     def recentfiles(self, sincefile=None):
-        rf = cherrypy.request.db.query(ShockFile).order_by(ShockFile.ctime)[0:10]
-        return jsonshock.encode(rf)
+        dbsess = cherrypy.request.db
+        rf = dbsess.query(ShockFile).order_by(ShockFile.ctime.desc())[0:10]
+        cherrypy.response.headers['Content-Type'] = 'text/json'
+        return prettify(jsonshock.encode(rf))
         
 
         
@@ -454,11 +483,12 @@ if __name__=='__main__':
     d = "Run the shocktopodes service."
     argparser = argparse.ArgumentParser(description=d)
     argparser.add_argument("--init", "-i", action='store_true',
-                           help="Reinitialize everything. WARNING: DESTROYS ANY EXISTING DATA.")
+     help="Reinitialize everything. WARNING: DESTROYS ANY EXISTING DATA.")
 
     args_namespace = argparser.parse_args()
     if args_namespace.init:
         reinit()
+        sys.exit()
 
     SAEnginePlugin(cherrypy.engine).subscribe()
     cherrypy.tools.db = SATool()
