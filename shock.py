@@ -256,7 +256,7 @@ class ShockFile(Base):
         #       Is that a good idea? 
         if content_type == 'audio/mp4':
             self.jplayertype = 'm4a'
-        elif content_type == 'audio/mp3': # TODO: is this the right mimetype?
+        elif content_type == 'audio/mpeg':
             self.jplayertype = 'mp3'
         # elif content_type == 'image/jpeg': 
         #     self.filext = 'jpeg'
@@ -468,13 +468,23 @@ def reinit():
     data = rf.read()
     rf.close()
     sha1 = sha1hash(data)
-    exaudio = ShockFile('predclick.m4a', 'audio/mp4', len(data), sha1)
-    wf = open(exaudio.localpath, 'bw')
+    exringtone = ShockFile('predclick.m4a', 'audio/mp4', len(data), sha1)
+    wf = open(exringtone.localpath, 'bw')
     wf.write(data)
     wf.close()
     
+    rf = open(os.path.join(scriptdir, 'static', 'barbiejeep.mp3'), 'br')
+    data = rf.read()
+    rf.close()
+    sha1 = sha1hash(data)
+    exmp3 = ShockFile('barbiejeep.mp3', 'audio/mpeg', len(data), sha1)
+    wf = open(exmp3.localpath, 'bw')
+    wf.write(data)
+    wf.close()
+
     sess.add(eximage)
-    sess.add(exaudio)
+    sess.add(exringtone)
+    sess.add(exmp3)
 
     sess.commit()
 
