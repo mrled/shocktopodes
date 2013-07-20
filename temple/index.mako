@@ -53,13 +53,16 @@
         $("ul#recent-file-list").append(recli);            
       }
     }
-
   }
 
   $(document).ready(function() {
     get_rf();
   });
   </script>
+
+  <link rel="stylesheet" href="./static/dropzone/css/dropzone.css" />
+  <script src="./static/dropzone/dropzone.js"></script>
+
 </%block>
 
 <div class="shock-column-set">
@@ -71,33 +74,33 @@
           <li id="no-recent-files"><i>Fetching recent files...</i></li>
         </ul>
       </div>
-      <script>
-
-
-      </script>
 
   </div>
   <div class="shock-column">
     <h2>Upload a file</h2>
-    <script src="./static/dropzone/dropzone.js"></script>
-    <script>
-    function szinitfunc() {
-      this.on("success", get_rf)
-    }
-    Dropzone.options.shockzone = {
-      paramName: "myFile",
-      init: function() {
-        this.on("success", function(myFile) {
-          console.log("File: ");
-          console.log(myFile);
-          get_rf();
-        })
-      }
-    };
-    </script>
+    <div id="previews" class="dropzone-previews"></div>
+    <button id="uploadbutt">Click me to select files</button>
 
-    <form action="/shockup"
-          class="dropzone"
-          id="shockzone"></form>
+    <script>
+      function szinitfunc() {
+        this.on("success", get_rf)
+      }
+      new Dropzone(document.body, { 
+        paramName: "myFile",
+        url: "/shockup", 
+        previewsContainer: "#previews", 
+        clickable: "#uploadbutt",
+        init: function() {
+          this.on("success", function(myFile) {
+            console.log("File: ");
+            console.log(myFile);
+            get_rf();
+          })
+        }
+      });
+      Dropzone.options.shockzone = {
+        paramName: "myFile",
+      }
+    </script>
   </div>
 </div>
