@@ -111,8 +111,13 @@ class SAEnginePlugin(plugins.SimplePlugin):
         self.bus.subscribe("bind", self.bind)
  
     def start(self):
-        self.sa_engine = create_engine('sqlite:///%s' % sqlitedbpath,
-            echo=True)
+        # if config.getboolean('debug'):
+        #     self.sa_engine = create_engine('sqlite:///%s' % sqlitedbpath, 
+        #                                    echo=True)
+        # else:
+        #     self.sa_engine = create_engine('sqlite:///%s' % sqlitedbpath, 
+        #                                    echo=False)
+        self.sa_engine = create_engine('sqlite:///%s' % sqlitedbpath)
         Base.metadata.create_all(self.sa_engine)
  
     def stop(self):
@@ -142,7 +147,7 @@ class SATool(cherrypy.Tool):
                                priority=20)
  
         self.session = scoped_session(sessionmaker(autoflush=True,
-                                                  autocommit=False))
+                                                   autocommit=False))
  
     def _setup(self):
         cherrypy.Tool._setup(self)
@@ -325,12 +330,13 @@ def protect_handler(*args, **kwargs):
         # they'll be redirected there after they do so
         crrl = cherrypy.request.request_line.split()
         requested_page = urllib.parse.quote(crrl[1])
+        #strace()
         try:
             # now try to see if there was a valid session from before
             this_session = cherrypy.session[SESSION_KEY]
-            cherrypy.session.regenerate()
+            #cherrypy.session.regenerate() # do this only at login
         except KeyError:
-            debugprint("Redirecting to login page...")
+            debugprint("cherrypy.session[SESSION_KEY] is empty. Redirecting...")
             redir_url = "/login?from_page={}".format(requested_page)
             raise cherrypy.HTTPRedirect(redir_url)
 
@@ -362,6 +368,7 @@ class ShockRoot:
     @cherrypy.expose
     def login(self, key=None, from_page='/'):
         debugprint("From page: {}".format(from_page))
+        cherrypy.session.regenerate() # session fixation prevention
         if from_page.startswith("/login") or from_page.startswith("/logout"):
             from_page="/"
         if self.valid_key(key, cherrypy.request.db):
