@@ -1,0 +1,14 @@
+1.0:
+	- Ensure that 'use strict'; is used everywhere (in Javascript)
+	- Auth problems crop up unexpectedly @done
+	- Metadata fields like comments and source URL and stuff?
+	- Download button
+	- Support downloading SoundCloud & YouTube etc via youtube-dl
+	- Support downloading mp3s from URLs
+	- Prohibit users from uploading files I dont support
+	- Allow drag and drop over any part of the page, not just the little 'Drop files here to upload' section @done
+	- Add some JS that indicates that D&D is going to upload files
+	- embed the player/viewer into the recently uploaded files list
+
+1.1: 
+	- Playlists
