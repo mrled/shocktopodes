@@ -1,9 +1,5 @@
 # Devnotes
 
-Issue tracking: I use Bugs Everywhere for this. 
-
-A note about BE: just do `python setup.py install` rather than use their makefile and configure the zillions of packages it needs. I'm not doing any of that other shit so just build it without the docs or whatever and save yourself some dependency heartache. 
-
 ### Mako
 
 Using Mako as a CherryPy tool: 
