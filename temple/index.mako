@@ -8,9 +8,6 @@
   <script>
   "use strict";
 
-//  function update_rf_list(sflist) {
-//  }
-
   function get_rf() {
     var rfarray = [];
     function successfunc(data) {
@@ -60,10 +57,42 @@
   });
   </script>
 
+  <script>
+    var tid;
+
+    function handleDragOver(event) {
+      clearTimeout(tid);
+      event.stopPropagation();
+      event.preventDefault();
+      $('.overlay').show();
+
+    }
+
+    function handleDragLeave(event) {
+      tid = setTimeout(function(){
+        event.stopPropagation();
+        $('.overlay').hide();
+      }, 0);
+    }
+
+    function handleDrop(event) {
+      event.stopPropagation();
+      event.preventDefault();
+      $('.overlay').hide();
+    }
+
+  </script>
+
   <link rel="stylesheet" href="./static/dropzone/css/dropzone.css" />
   <script src="./static/dropzone/dropzone.js"></script>
 
 </%block>
+
+  <div class="overlay">
+    <div class="overlaytext">
+      <p>Drop your file to upload</p>
+    </div>
+  </div>
 
 <div class="shock-column-set">
   <div class="shock-column">
@@ -85,7 +114,7 @@
       function szinitfunc() {
         this.on("success", get_rf)
       }
-      new Dropzone(document.body, { 
+      var dz = new Dropzone(document.body, { 
         paramName: "myFile",
         url: "/shockup", 
         previewsContainer: "#previews", 
@@ -101,6 +130,11 @@
       Dropzone.options.shockzone = {
         paramName: "myFile",
       }
+      dz.on("drop", handleDrop);
+      dz.on("dragover", handleDragOver);
+      dz.on("dragleave", handleDragLeave);
+
+
     </script>
   </div>
 </div>

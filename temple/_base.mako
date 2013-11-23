@@ -2,7 +2,7 @@
   <head>
     <title><%block name="title" /></title>
     <script type="text/javascript" 
-            src="http://ajax.googleapis.com/ajax/libs/jquery/1.6/jquery.min.js"></script>
+            src="/static/jquery-1.10.2.min.js"></script>
     <link rel="stylesheet" href="/static/shock.css" />
     <link rel="stylesheet" href="/static/dropzone/css/basic.css" />
     <%block name="underheader" />
