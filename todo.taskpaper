@@ -1,29 +1,31 @@
 Imports from bugs everywhere: 
 
--   e8c/fc9:om: Ensure that 'use strict'; is used everywhere
+-   e8c/fc9:om: Ensure that 'use strict'; is used everywhere 
 -   e8c/faa:om: Metadata fields like comments and source URL and stuff?
 -   e8c/81d:om: Download button
 -   e8c/dd9:om: Support downloading SoundCloud & YouTube etc via youtube-dl
 -   e8c/5aa:om: Support downloading mp3s from URLs
 -   e8c/f91:om: Prohibit users from uploading files I dont support
--   e8c/7ab:om: Allow drag and drop over any part of the page, not just the little "Drop files here to upload" section
+-   e8c/7ab:om: Allow drag and drop over any part of the page, not just the little "Drop files here to upload" section @done
 -   e8c/bf6:om: embed the player/viewer into the recently uploaded files list
 
 Big changes / redesigns:
 
 -   Playlists
--   Better browsing of already uploaded content
--   Drag & drop: should look like imgur or google images or something. should be obvious. 
-	OK I think I have a way to do this: check out the dropzone source:
+-   Better browsing of already uploaded content 
+-   Drag & drop: should look like imgur or google images or something. should be obvious for the user. @done
+	OK I think I have a way to do this: check out the dropzone source
 	<https://github.com/enyo/dropzone/blob/master/src/dropzone.coffee>
 	There's a list of events. The path forward involves them somehow. 
 	Instead of `new Dropzone...` you'll do `var dz = new Dropzone...` and
 	then you can `dz.on('event', ...)`. 
 	I THINK so anyway
 
-Other stuff (minor)
+Other stuff (minor): 
 
 -   Better images view. Make it fit vertically at least. 
+-   Support drag and drop from other webpages, not just local disk
+-   If something is uploaded with a different name but same hash, it not just uploads the file twice, but stores it twice on the filesystem. Should link it or something. 
 
 Big ideas: 
 

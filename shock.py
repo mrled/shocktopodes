@@ -187,8 +187,6 @@ class MakoHandler(cherrypy.dispatch.LateParamPageHandler):
                     print('File {} line #{} function {}'.format(filename, 
                         lineno, function))
                     print('    {}'.format(line))
-                    #print('{}: {}'.format(traceback.error.__class__.__name__), 
-                    #    traceback.error)
             else:
                 raise
 
@@ -257,14 +255,10 @@ class ShockFile(Base):
         # TODO: Since I'm storing the filext anyway, do I even need this? 
         #       Probably not...
         self.content_type = content_type
-        # TODO: This is kinda dumb. Use the original filename if it had one? 
-        #       Is that a good idea? 
         if content_type == 'audio/mp4':
             self.jplayertype = 'm4a'
         elif content_type == 'audio/mpeg':
             self.jplayertype = 'mp3'
-        # elif content_type == 'image/jpeg': 
-        #     self.filext = 'jpeg'
         else:
             self.jplayertype = False
         self.sha1hash = sha1hash
@@ -291,6 +285,7 @@ class ShockFile(Base):
               'fullurl': self.fullurl,
               'metadataurl': self.metadataurl,
               'ctime': self.ctime,
+              'length': self.length,
               'objtype': "ShockFile"}
         return sf
 
@@ -432,9 +427,13 @@ class ShockRoot:
     @cherrypy.expose
     def recentfiles(self, sincefile=None):
         dbsess = cherrypy.request.db
-        rf = dbsess.query(ShockFile).order_by(ShockFile.ctime.desc())[0:10]
+        #allfil = dbsess.query(ShockFile).order_by(ShockFile.ctime.asc()).all()
+        #recfil = allfil[-11:]
+        recfil = dbsess.query(ShockFile).order_by(ShockFile.ctime.asc())[-10:]
         cherrypy.response.headers['Content-Type'] = 'text/json'
-        return prettify(jsonshock.encode(rf))
+        debugprint(prettify(jsonshock.encode(recfil)))
+        debugprint("recentfiles count: {}".format(len(recfil)))
+        return prettify(jsonshock.encode(recfil))
         
 
         
@@ -500,7 +499,7 @@ if __name__=='__main__':
     d = "Run the shocktopodes service."
     argparser = argparse.ArgumentParser(description=d)
     argparser.add_argument("--init", "-i", action='store_true',
-     help="Reinitialize everything. WARNING: DESTROYS ANY EXISTING DATA.")
+       help="Reinitialize everything. WARNING: DESTROYS ANY EXISTING DATA.")
 
     args_namespace = argparser.parse_args()
     if args_namespace.init:

@@ -5,7 +5,7 @@
    ---------------------------------------------------------------
    SwissStyle by Brett Terpstra
    Modifications by mrled
-   Some additions by whoever wrote dokuwiki's convoluted maze of CSS
+   Some additions from dokuwiki
  */
 
 body
@@ -15,13 +15,6 @@ body
     margin:1em;
 }
 
-/* For some reason I don't understand, Swiss.css has <li> in different sizes from
-   body text. fuck.dat
- */
-
-/* Swiss.css has its own header stuff, but I liked the stuff from 
-   dokuwiki a lot better, so I replaced it with that.
- */
 h1, h2, h3, h4, h5 {
     color:#000;
     background-color:inherit;
@@ -83,47 +76,39 @@ a {
     text-decoration:none;
 }
 
-h2 em
-{
+h2 em {
     color:#111;
     padding-left:10px;
     text-shadow:0 1px 0 #FFF
 }
 
-.footnote
-{
+.footnote {
     color:#0d6ea1;
     font-size:.8em;
     vertical-align:super
 }
 
-#wrapper img
-{
+#wrapper img {
     max-width:100%
 }
 
-dd
-{
+dd {
     margin-bottom:1em
 }
 
-li > p:first-child
-{
+li > p:first-child {
     margin:0
 }
 
-ul ul,ul ol
-{
+ul ul,ul ol {
     margin-bottom:.4em
 }
 
-caption,col,colgroup,table,tbody,td,tfoot,th,thead,tr
-{
+caption,col,colgroup,table,tbody,td,tfoot,th,thead,tr {
     border-spacing:0
 }
 
-table
-{
+table {
     border:1px solid rgba(0,0,0,0.25);
     border-collapse:collapse;
     display:table;
@@ -133,82 +118,68 @@ table
     table-layout:fixed
 }
 
-caption
-{
+caption {
     display:table-caption;
     font-weight:700
 }
 
-col
-{
+col {
     display:table-column
 }
 
-colgroup
-{
+colgroup {
     display:table-column-group
 }
 
-tbody
-{
+tbody {
     display:table-row-group
 }
 
-tfoot
-{
+tfoot {
     display:table-footer-group
 }
 
-thead
-{
+thead {
     display:table-header-group
 }
 
-td,th
-{
+td,th {
     display:table-cell
 }
 
-tr
-{
+tr {
     display:table-row
 }
 
-table th,table td
-{
+table th,table td {
     font-size:1.1em;
     line-height:23px;
     padding:0 1em
 }
 
-table thead
-{
+table thead {
     background:rgba(0,0,0,0.15);
     border:1px solid rgba(0,0,0,0.15);
     border-bottom:1px solid rgba(0,0,0,0.2)
 }
 
-table tbody
-{
+table tbody {
     background:rgba(0,0,0,0.05)
 }
 
-table tfoot
-{
+table tfoot {
     background:rgba(0,0,0,0.15);
     border:1px solid rgba(0,0,0,0.15);
     border-top:1px solid rgba(0,0,0,0.2)
 }
 
-figure
-{
+figure {
     display:inline-block;
     margin-bottom:1.2em;
     position:relative
 }
 
-figcaption
-{
+figcaption {
     -webkit-transition:all .2s ease-in-out;
     background:rgba(0,0,0,0);
     bottom:0;
@@ -219,34 +190,16 @@ figcaption
     width:100%
 }
 
-figure:hover
-{
+figure:hover {
     cursor:pointer
 }
 
-figcaption:hover
-{
+figcaption:hover {
     background:rgba(0,0,0,.56);
     color:rgba(255,255,255,1)
 }
 
-/* .poetry pre */
-/* { */
-/*     display:block; */
-/*     font-family:Georgia, Garamond, serif!important; */
-/*     font-size:110%!important; */
-/*     font-style:italic; */
-/*     line-height:1.6em; */
-/*     margin-left:1em */
-/* } */
-
-/* .poetry pre code */
-/* { */
-/*     font-family:Georgia, Garamond, serif!important */
-/* } */
-
-sup,sub,a.footnote
-{
+sup,sub,a.footnote {
     font-size:1.4ex;
     height:0;
     line-height:1;
@@ -254,68 +207,16 @@ sup,sub,a.footnote
     vertical-align:super
 }
 
-dt,th
-{
+dt,th {
     font-weight:700
 }
 
-table tr:nth-child(odd),table th:nth-child(odd),table td:nth-child(odd)
-{
+table tr:nth-child(odd),table th:nth-child(odd),table td:nth-child(odd) {
     background:rgba(255,255,255,0.06)
 }
 
-table tr:nth-child(even),table td:nth-child(even)
-{
+table tr:nth-child(even),table td:nth-child(even) {
     background:rgba(0,0,0,0.06)
-}
-
-@media print {
-    body {
-        overflow:auto
-    }
-    #main p a:after {
-	    content: " ("attr(href)") ";
-	    font-size: 10pt;
-    }
-    #wrapper {
-        background:#fff;
-        color:#303030;
-        font-size:85%;
-        padding:10px;
-        position:relative;
-        text-indent:0
-    }
-}
-
-@media screen {
-    .inverted {
-        background:#333
-    }
-    
-    .inverted p,.inverted td,.inverted li,.inverted h1,.inverted h2,.inverted h3,.inverted h4,.inverted h5,.inverted h6,.inverted pre,.inverted code,.inverted th
-    {
-        color:#eee!important
-    }
-    
-    .inverted a
-    {
-        color:#fff;
-        text-decoration:underline
-    }
-    
-    #wrapper
-    {
-        padding:20px
-    }
-    
-    .inverted #wrapper
-    {
-        background:#333;
-    }
-}
-
-#backlinks {
-    display: none;
 }
 
 .shock-column-set {
@@ -339,8 +240,6 @@ table tr:nth-child(even),table td:nth-child(even)
 	border-top: 1px solid #8cacbb;
 }
 
-
-}
 input#searchbox {
     background: #FFFFFF;
     padding: 0px 0px 4px 4px;
@@ -353,18 +252,13 @@ input#searchbox {
 }
 
 pre, code {
-/*  for white on black:
-    background: #000000;
-    color: #FFFFFF;
- */
-/*  for black on gray */
     background:#E0E0E0;
     color: #000000;
 
     padding-right: 4px;
     padding-left:  4px;
     font-family: ProFont,Consolas,monospace;
-}
+}e
 .toc {
     border: 1px solid #8cacbb;
     margin-right:  30px; /*if I don't have this, <li> bullets in the body will be displayed on top of me, wtf*/
@@ -411,7 +305,7 @@ blockquote {
     padding : 25px;
     color : white;
     text-align : center;
-    font-size : 1.5em;
+    font-size : 2em;
     font-style : italic;
     font-weight : normal;
 }
