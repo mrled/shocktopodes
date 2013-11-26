@@ -76,11 +76,14 @@
       paramName: "myFile",
       url: "/shockup", 
       previewsContainer: "#previews", 
-      clickable: "#uploadbutt"
+      clickable: "#uploadbutt",
+      uploadprogress: function(file, progress) {
+        console.log("uploadprogress");
+      },
+      thumbnail: function(file, dataUrl) {
+        console.log("thumbnail")
+      }
     });
-    Dropzone.options.shockzone = {
-      paramName: "myFile",
-    }
     var tid;
     dz.on("drop", function(event) {
       event.stopPropagation();
@@ -99,11 +102,16 @@
         $('.overlay').hide();
       }, 0);
     });
+    dz.on("complete", function(event) {
+      get_rf();
+    });
+    /*
     dz.on("addedfile", function(file) {
       file.previewElement.addEventListener("click", function() { 
         dz.removeFile(file); 
       });
     });
+    */
 
     get_rf();
   });

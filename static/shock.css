@@ -309,3 +309,8 @@ blockquote {
     font-style : italic;
     font-weight : normal;
 }
+
+/* dropzone.js uses this id to show its previews w/ thumbnail etc */
+#previews {
+    display: none;
+}
